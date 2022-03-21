@@ -24,9 +24,8 @@ pub fn user_provider(props: &UserProviderProps) -> Html {
 
     use_effect_with_deps(
         move |maybe_user| {
-            let maybe_user = maybe_user.clone();
             if maybe_user.clone().is_some() {
-                let user = (*maybe_user).clone().unwrap();
+                let user = (*maybe_user).as_ref().unwrap();
                 LocalStorage::set(STORAGE_KEY, user).expect("failed to set");
             };
             || ()
