@@ -24,7 +24,7 @@ pub fn poker_game(props: &Props) -> Html {
     html! {
         <section>
             <h1>{format!("Welcome to Game: {}", props.id)}</h1>
-            <Link<Route> to={Route::Home}>{ "click here to go home" }</Link<Route>>
+            <Link<Route> to={Route::Home}>{ "Go back home" }</Link<Route>>
         </section>
     }
 }
