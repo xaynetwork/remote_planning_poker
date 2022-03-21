@@ -8,7 +8,7 @@ pub fn page_not_found() -> Html {
     html! {
         <section>
             <h1>{ "Page not found" }</h1>
-            <Link<Route> to={Route::Home}>{ "click here to go home" }</Link<Route>>
+            <Link<Route> to={Route::Home}>{ "Go back home" }</Link<Route>>
         </section>
     }
 }

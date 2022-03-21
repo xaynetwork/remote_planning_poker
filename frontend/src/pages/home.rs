@@ -14,8 +14,8 @@ pub fn home() -> Html {
 
     html! {
         <section>
-            <h1>{"Home"}</h1>
-            <button {onclick}>{ "generate new game" }</button>
+            <h1>{ "Home" }</h1>
+            <button {onclick}>{ "Generate new game" }</button>
         </section>
     }
 }

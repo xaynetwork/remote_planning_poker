@@ -23,9 +23,6 @@ pub fn nickname_input(props: &NicknameInputProps) -> Html {
     };
 
     html! {
-        <input
-            placeholder="What your nickname?"
-            {onchange}
-        />
+        <input {onchange} placeholder="What is your name?" />
     }
 }
