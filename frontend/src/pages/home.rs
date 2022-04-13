@@ -8,7 +8,7 @@ use crate::Route;
 pub fn home() -> Html {
     let history = use_history().unwrap();
     let onclick = Callback::once(move |_| {
-        let id = Uuid::new_v4().to_string();
+        let id = Uuid::new_v4();
         history.push(Route::PokerGame { id })
     });
 

@@ -1,3 +1,4 @@
+use uuid::Uuid;
 use yew::prelude::*;
 use yew_router::prelude::*;
 
@@ -5,7 +6,7 @@ use crate::Route;
 
 #[derive(Clone, Debug, Eq, PartialEq, Properties)]
 pub struct Props {
-    pub id: String,
+    pub id: Uuid,
 }
 
 #[function_component(PokerGame)]
@@ -23,7 +24,7 @@ pub fn poker_game(props: &Props) -> Html {
 
     html! {
         <section>
-            <h1>{format!("Welcome to Game: {}", props.id)}</h1>
+            <h1>{format!("Welcome to game: {}", props.id)}</h1>
             <Link<Route> to={Route::Home}>{ "Go back home" }</Link<Route>>
         </section>
     }

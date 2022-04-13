@@ -1,3 +1,4 @@
+use uuid::Uuid;
 use yew::prelude::*;
 use yew_router::prelude::*;
 
@@ -11,19 +12,19 @@ pub enum Route {
     #[at("/")]
     Home,
     #[at("/game/:id")]
-    PokerGame { id: String },
+    PokerGame { id: Uuid },
     #[not_found]
     #[at("/404")]
     NotFound,
 }
 
 fn switch(routes: &Route) -> Html {
-    match routes.clone() {
+    match routes {
         Route::Home => {
             html! { <Home /> }
         }
         Route::PokerGame { id } => {
-            html! { <PokerGame id={id} /> }
+            html! { <PokerGame id={id.clone()} /> }
         }
         Route::NotFound => {
             html! { <PageNotFound /> }
