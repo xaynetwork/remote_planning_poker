@@ -27,7 +27,6 @@ async fn main() {
                 .make_span_with(DefaultMakeSpan::default().include_headers(false)),
         );
 
-    // run it with hyper on localhost:3000
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
     println!("listening on {}", addr);
     axum::Server::bind(&addr)
