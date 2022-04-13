@@ -13,11 +13,12 @@ pub fn nickname_input(props: &NicknameInputProps) -> Html {
 
         Callback::from(move |e: Event| {
             let input: HtmlInputElement = e.target_unchecked_into();
-            let value = input.value().trim().to_string();
+            let value = input.value();
+            let trim_val = value.trim();
 
-            if !value.is_empty() {
+            if !trim_val.is_empty() {
                 input.set_value("");
-                onsubmit.emit(value);
+                onsubmit.emit(trim_val.to_string())
             }
         })
     };
