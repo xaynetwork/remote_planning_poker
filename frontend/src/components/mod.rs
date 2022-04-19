@@ -1,3 +1,3 @@
 pub mod layout;
-pub mod nickname_input;
+pub mod login;
 pub mod user_provider;
