@@ -3,7 +3,7 @@ use yew::prelude::*;
 use yew_router::prelude::*;
 
 use crate::{
-    components::user_provider::UserProvider,
+    components::{layout::Layout, user_provider::UserProvider},
     pages::{home::Home, page_not_found::PageNotFound, poker_game::PokerGame},
 };
 
@@ -37,9 +37,9 @@ pub fn app() -> Html {
     html! {
         <BrowserRouter>
             <UserProvider>
-                <main>
+                <Layout>
                     <Switch<Route> render={Switch::render(switch)} />
-                </main>
+                </Layout>
             </UserProvider>
         </BrowserRouter>
     }
