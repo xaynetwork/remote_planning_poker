@@ -35,12 +35,12 @@ fn switch(routes: &Route) -> Html {
 #[function_component(App)]
 pub fn app() -> Html {
     html! {
-        <UserProvider>
-            <BrowserRouter>
+        <BrowserRouter>
+            <UserProvider>
                 <main>
                     <Switch<Route> render={Switch::render(switch)} />
                 </main>
-            </BrowserRouter>
-        </UserProvider>
+            </UserProvider>
+        </BrowserRouter>
     }
 }

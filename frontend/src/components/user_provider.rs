@@ -3,8 +3,9 @@ use serde::{Deserialize, Serialize};
 use std::ops::Deref;
 use uuid::Uuid;
 use yew::prelude::*;
+use yew_router::hooks::use_route;
 
-use crate::components::nickname_input::NicknameInput;
+use crate::{components::nickname_input::NicknameInput, Route};
 
 const STORAGE_KEY: &str = "yew.user.self";
 
@@ -21,6 +22,7 @@ pub struct UserProviderProps {
 
 #[function_component(UserProvider)]
 pub fn user_provider(props: &UserProviderProps) -> Html {
+    let route: Route = use_route().unwrap_or_default();
     let user = use_state(|| LocalStorage::get(STORAGE_KEY).ok() as Option<User>);
 
     use_effect_with_deps(
@@ -48,7 +50,24 @@ pub fn user_provider(props: &UserProviderProps) -> Html {
               { props.children.clone() }
             </ContextProvider<User>>
         } else {
-            <section style="padding: 32px">
+            <section
+                class={classes!(
+                    "h-screen", "p-4",
+                    "flex", "justify-center", "items-center", "flex-col",
+                    "bg-slate-200"
+                )}
+            >
+                if let Route::PokerGame { id: _ } = route {
+                    <h1
+                        class={classes!(
+                            "px-3", "mb-20",
+                            "sm:text-3xl",
+                            "text-slate-500",
+                        )}
+                    >
+                        {"You are about to enter an existing session..."}
+                    </h1>
+                }
                 <NicknameInput {onsubmit} />
             </section>
         }
