@@ -1,18 +1,11 @@
+use common::User;
 use gloo_storage::{LocalStorage, Storage};
-use serde::{Deserialize, Serialize};
 use std::ops::Deref;
-use uuid::Uuid;
 use yew::prelude::*;
 
 use crate::components::login::Login;
 
 const STORAGE_KEY: &str = "yew.user.self";
-
-#[derive(Serialize, Deserialize, Eq, PartialEq, Debug, Clone)]
-struct User {
-    id: Uuid,
-    nickname: String,
-}
 
 #[derive(Properties, PartialEq)]
 pub struct UserProviderProps {
@@ -36,8 +29,7 @@ pub fn user_provider(props: &UserProviderProps) -> Html {
     let onsubmit = {
         let user = user.clone();
         Callback::from(move |nickname: String| {
-            let id = Uuid::new_v4();
-            let new_user = User { id, nickname };
+            let new_user = User::new(nickname);
             user.set(Some(new_user));
         })
     };

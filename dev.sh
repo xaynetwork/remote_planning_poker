@@ -10,6 +10,6 @@ popd
 
 
 (trap 'kill 0' SIGINT; \
-  bash -c 'cd frontend; tailwindcss -c tailwind.config.js -o tailwind.css --watch' & \
+  bash -c 'cd api; cargo watch -x run' & \
   bash -c 'cd frontend; trunk serve' & \
-  bash -c 'cd api; cargo watch -x run')
+  bash -c 'cd frontend; tailwindcss -c tailwind.config.js -o tailwind.css --watch')
