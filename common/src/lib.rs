@@ -2,9 +2,10 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use uuid::Uuid;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum GameAction {
-    PlayerJoined(Player),
+    CurrentState(Game),
+    PlayerJoined(User),
     PlayerLeft,
     StoryAdded(StoryInfo),
     StoryUpdated(StoryId, StoryInfo),
@@ -15,17 +16,17 @@ pub enum GameAction {
     ResultsApproved(StoryId),
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct GameMessage {
     pub user_id: UserId,
     pub game_id: GameId,
     pub action: GameAction,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Debug)]
 pub struct GameId(pub Uuid);
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct Game {
     pub id: GameId,
     pub stories: HashMap<StoryId, Story>,
@@ -80,7 +81,7 @@ impl Game {
                     }
                     None => match message.action {
                         // non-registered players can only join the game
-                        GameAction::PlayerJoined(player) => self.add_player(player),
+                        GameAction::PlayerJoined(user) => self.add_player(user),
                         _ => (),
                     },
                 }
@@ -90,7 +91,9 @@ impl Game {
         self
     }
 
-    fn add_player(&mut self, player: Player) {
+    fn add_player(&mut self, user: User) {
+        let player = Player::new(user);
+        println!("add player: {:#?}", &player);
         self.players.insert(player.user.id, player);
     }
 
@@ -159,10 +162,10 @@ impl Game {
     }
 }
 
-#[derive(PartialEq, Eq, Hash, Clone, Copy, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Hash, Clone, Copy, Serialize, Deserialize, Debug)]
 pub struct StoryId(Uuid);
 
-#[derive(PartialEq, Clone, Serialize, Deserialize)]
+#[derive(PartialEq, Clone, Serialize, Deserialize, Debug)]
 pub enum StoryStatus {
     Init,
     Voting,
@@ -170,13 +173,13 @@ pub enum StoryStatus {
     Approved,
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct StoryInfo {
     pub title: String,
     pub description: Option<String>,
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct Story {
     pub id: StoryId,
     pub info: StoryInfo,
@@ -195,7 +198,7 @@ impl Story {
     }
 }
 
-#[derive(Clone, Copy, Serialize, Deserialize)]
+#[derive(Clone, Copy, Serialize, Deserialize, Debug)]
 pub enum VoteValue {
     Zero = 0,
     One = 1,
@@ -211,15 +214,15 @@ pub enum VoteValue {
     QuestionMark = -2,
 }
 
-#[derive(Clone, Copy, Serialize, Deserialize)]
+#[derive(Clone, Copy, Serialize, Deserialize, Debug)]
 pub struct Vote {
     pub value: VoteValue,
 }
 
-#[derive(PartialEq, Eq, Hash, Clone, Copy, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Hash, Clone, Copy, Serialize, Deserialize, Debug)]
 pub struct UserId(Uuid);
 
-#[derive(PartialEq, Clone, Serialize, Deserialize)]
+#[derive(PartialEq, Clone, Serialize, Deserialize, Debug)]
 pub struct User {
     pub id: UserId,
     pub name: String,
@@ -234,13 +237,13 @@ impl User {
     }
 }
 
-#[derive(PartialEq, Clone, Copy, Serialize, Deserialize)]
+#[derive(PartialEq, Clone, Copy, Serialize, Deserialize, Debug)]
 pub enum PlayerRole {
     Admin,
     Player,
 }
 
-#[derive(PartialEq, Clone, Serialize, Deserialize)]
+#[derive(PartialEq, Clone, Serialize, Deserialize, Debug)]
 pub struct Player {
     pub user: User,
     pub role: PlayerRole,

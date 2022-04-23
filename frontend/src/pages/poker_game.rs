@@ -1,4 +1,4 @@
-use common::{Game, GameId, GameMessage, Player, User};
+use common::{Game, GameAction, GameId, GameMessage, Player, User};
 use futures::{SinkExt, StreamExt};
 use gloo_net::websocket::{futures::WebSocket, Message};
 use std::{ops::Deref, rc::Rc};
@@ -15,7 +15,16 @@ pub struct Props {
 }
 
 struct GameState {
-    game: Game,
+    game: Option<Game>,
+    is_loading: bool,
+}
+
+impl Default for GameState {
+    fn default() -> Self {
+        let game = None;
+        let is_loading = true;
+        Self { game, is_loading }
+    }
 }
 
 impl Reducible for GameState {
@@ -24,34 +33,40 @@ impl Reducible for GameState {
 
     /// Reducer Function
     fn reduce(self: Rc<Self>, action: Self::Action) -> Rc<Self> {
-        let game = self.game.clone().reduce(action);
-        Self { game }.into()
+        // match action.action {
+        //     GameAction::
+        // }
+
+        // let game = self.game.clone().reduce(action);
+
+        Self {
+            game: None,
+            is_loading: true,
+        }
+        .into()
     }
 }
 
 #[function_component(PokerGame)]
 pub fn poker_game(props: &Props) -> Html {
     let user = use_context::<User>().expect("no user ctx found");
-    let counter = use_reducer(|| {
-        let game = Game::new(user.clone());
-        GameState { game }
-    });
+    let state = use_reducer(GameState::default);
 
     let ws_ref = use_mut_ref(|| {
-        let ws = WebSocket::open("ws://localhost:3000/game").unwrap();
+        let ws = WebSocket::open("ws://localhost:3000/api/game").unwrap();
         log::info!("websocket opened");
         let (ws_write, mut ws_read) = ws.split();
 
-        let counter = counter.clone();
+        // let counter = counter.clone();
         spawn_local(async move {
             while let Some(msg) = ws_read.next().await {
                 match msg {
                     Ok(Message::Text(data)) => {
                         log::debug!("[yew] text from websocket: {}", data);
 
-                        if let Ok(action) = serde_json::from_str(&data) {
-                            counter.dispatch(action);
-                        }
+                        // if let Ok(action) = serde_json::from_str(&data) {
+                        //     counter.dispatch(action);
+                        // }
                     }
                     Ok(Message::Bytes(b)) => {
                         let decoded = std::str::from_utf8(&b);
@@ -69,6 +84,38 @@ pub fn poker_game(props: &Props) -> Html {
 
         ws_write
     });
+
+    {
+        let user = user.clone();
+        let game_id = props.clone().id;
+        let ws_ref = ws_ref.clone();
+
+        use_effect_with_deps(
+            move |_| {
+                spawn_local(async move {
+                    let game_id = GameId(game_id);
+                    let user_id = user.id;
+                    let action = GameAction::PlayerJoined(user);
+                    let msg = GameMessage {
+                        action,
+                        game_id,
+                        user_id,
+                    };
+                    let action = serde_json::to_string(&msg).unwrap();
+
+                    log::info!("joining: {:?}", action);
+                    ws_ref
+                        .deref()
+                        .borrow_mut()
+                        .send(Message::Text(action))
+                        .await
+                        .unwrap();
+                });
+                || ()
+            },
+            (), // dependents
+        );
+    }
 
     // let add_one = {
     //     let ws_ref = ws_ref.clone();
@@ -89,7 +136,7 @@ pub fn poker_game(props: &Props) -> Html {
     // };
 
     html! {
-        <section>
+        <>
             <header class={classes!("mb-12")}>
                 <nav class={classes!("py-4")}>
                     <Link<Route> to={Route::Home}>{ "Go back home" }</Link<Route>>
@@ -101,12 +148,46 @@ pub fn poker_game(props: &Props) -> Html {
                     </strong>
                 </h1>
             </header>
+            {
+                if state.is_loading {
+                    html!{
+                        <div class={classes!("p-4", "bg-yellow-200")}>
+                            <h2>{"is loading..."}</h2>
+                        </div>
+                    }
+                } else if let Some(game) = &(*state).game {
+                    html!{
+                        <div class={classes!("flex", "bg-white")}>
+
+                            <section class={classes!("flex-1", "p-4", "bg-blue-200")}>
+                                <h2>{game.id.0}</h2>
+                            </section>
+
+                            <aside class={classes!("flex-initial", "w-80", "p-4", "bg-red-200")}>
+                                <h3>{"Players"}</h3>
+
+                                // <ul>
+                                // </ul>
+                            </aside>
+
+                        </div>
+                    }
+                } else {
+                    html!{
+                        <div class={classes!("p-4", "bg-yellow-200")}>
+                            <h2>{"no game fetched"}</h2>
+                        </div>
+                    }
+                }
+            }
+
+
 
             // <div class={classes!("flex", "shadow-md", "bg-white")}>
             //     <button class={classes!("py-2", "px-4", "bg-red-200")} onclick={subtract_one}>{ "-1" }</button>
             //     <div class={classes!("p-2", "flex-1", "text-2xl", "text-center")}>{ counter.state.count }</div>
             //     <button class={classes!("py-2", "px-4","bg-green-200")} onclick={add_one}>{ "+1" }</button>
             // </div>
-        </section>
+        </>
     }
 }

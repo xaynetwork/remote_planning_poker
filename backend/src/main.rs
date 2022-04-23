@@ -5,22 +5,20 @@ use axum::{
     },
     http::StatusCode,
     response::IntoResponse,
-    routing::get,
+    routing::{get, post},
     Json, Router,
 };
-use common::{Game, GameId, Player, User};
-// use common::{}
+use common::{Game, GameAction, GameId, GameMessage, Player, User};
 use futures::{sink::SinkExt, stream::StreamExt};
+use serde_json::json;
 use std::{
     collections::HashMap,
-    // collections::{HashMap, HashSet},
     net::SocketAddr,
     sync::{Arc, Mutex},
 };
 use tokio::sync::broadcast;
 use tower_http::trace::{DefaultMakeSpan, TraceLayer};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-// use uuid::Uuid;
 
 // Our shared state
 struct AppState {
@@ -41,15 +39,15 @@ async fn main() {
     let (tx, _rx) = broadcast::channel(100);
     let app_state = Arc::new(AppState { games, tx });
 
+    let tracing_layer = TraceLayer::new_for_http()
+        .make_span_with(DefaultMakeSpan::default().include_headers(false));
+
     // Compose the routes
     let app = Router::new()
-        .route("/", get(get_root))
-        .route("/game", get(ws_handler).post(create_game))
-        // logging so we can see whats going on
-        .layer(
-            TraceLayer::new_for_http()
-                .make_span_with(DefaultMakeSpan::default().include_headers(false)),
-        )
+        .route("/api/index", get(get_root))
+        .route("/api/create-game", post(create_game))
+        .route("/api/game", get(ws_handler).post(create_game))
+        .layer(tracing_layer)
         .layer(Extension(app_state));
 
     let port = std::env::var("PORT")
@@ -64,12 +62,18 @@ async fn main() {
         .unwrap();
 }
 
+async fn get_root() -> impl IntoResponse {
+    Json("hello from axum")
+}
+
 async fn create_game(
     Json(user): Json<User>,
     Extension(state): Extension<Arc<AppState>>,
 ) -> impl IntoResponse {
     let game = Game::new(user);
     let game_id = game.id;
+    tracing::debug!("game{:#?}", &game);
+
     state.games.lock().unwrap().insert(game.id, game);
     (StatusCode::CREATED, Json(game_id))
 }
@@ -90,7 +94,6 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
 
     let _send_task = tokio::spawn(async move {
         while let Ok(msg) = rx.recv().await {
-            println!("will send msg: {}", msg);
             // In any websocket error, break loop.
             if sender.send(Message::Text(msg)).await.is_err() {
                 break;
@@ -109,15 +112,32 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
         if let Ok(msg) = msg {
             match msg {
                 Message::Text(data) => {
-                    println!("client sent str: {:?}", data);
+                    let msg: GameMessage = serde_json::from_str(&data).unwrap();
+                    println!("client sent msg: {:#?}", msg);
 
-                    // if let Ok(action) = serde_json::from_str(&data) {
-                    //     let mut counter = state.counter.lock().unwrap();
-                    //     println!("OLD counter: {:?}", counter.count);
-                    //     let new_counter = counter.reduce(action);
-                    //     *counter = new_counter;
-                    //     println!("NEW counter: {:?}", counter.count);
-                    // }
+                    let mut games = state.games.lock().unwrap();
+
+                    if let Some(game) = games.get(&msg.game_id) {
+                        println!("OLD game: {:#?}", &game);
+
+                        let msg = msg.clone();
+                        let game = (*game).clone();
+                        let game = game.reduce(msg);
+
+                        println!("NEW game: {:#?}", &game);
+
+                        games.insert(game.id, game);
+
+                        // if let GameAction::PlayerJoined(_) = msg.action {
+                        //     //
+                        // }
+                    }
+
+                    // let mut counter = state.counter.lock().unwrap();
+                    // println!("OLD counter: {:?}", counter.count);
+                    // let new_counter = counter.reduce(action);
+                    // *counter = new_counter;
+                    // println!("NEW counter: {:?}", counter.count);
 
                     tx.send(data).unwrap();
                 }
@@ -137,9 +157,3 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
 
     println!("EXIT client disconnected");
 }
-
-async fn get_root() -> impl IntoResponse {
-    Json("hello from axum!".to_string())
-}
-
-// type Db = Arc<RwLock<HashMap<Uuid, Game>>>;

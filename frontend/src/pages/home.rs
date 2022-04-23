@@ -1,4 +1,6 @@
-use uuid::Uuid;
+use common::{GameId, User};
+use gloo_net::http::Request;
+use wasm_bindgen_futures::spawn_local;
 use yew::prelude::*;
 use yew_router::prelude::*;
 
@@ -7,9 +9,25 @@ use crate::Route;
 #[function_component(Home)]
 pub fn home() -> Html {
     let history = use_history().unwrap();
-    let onclick = Callback::once(move |_| {
-        let id = Uuid::new_v4();
-        history.push(Route::PokerGame { id })
+    let user = use_context::<User>().expect("no user ctx found");
+
+    let onclick = Callback::from(move |_| {
+        let history = history.clone();
+        let user = user.clone();
+        spawn_local(async move {
+            let response = Request::post("/api/game")
+                .json(&user)
+                .unwrap()
+                .send()
+                .await
+                .unwrap();
+
+            if response.ok() {
+                let game_id: GameId = response.json().await.unwrap();
+                let id = game_id.0;
+                history.push(Route::PokerGame { id })
+            }
+        });
     });
 
     html! {
