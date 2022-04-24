@@ -44,7 +44,6 @@ async fn main() {
     // Compose the routes
     let app = Router::new()
         .route("/api/index", get(get_root))
-        .route("/api/create-game", post(create_game))
         .route("/api/game", get(ws_handler).post(create_game))
         .layer(tracing_layer)
         .layer(Extension(app_state));
@@ -89,6 +88,7 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
 
     let mut player_left_msg: Option<GameMessage> = None;
     // send the current state to the player who joined
+    // TODO: maybe do some logging here for None, Err, other Message cases
     if let Some(Ok(Message::Text(data))) = receiver.next().await {
         let msg: GameMessage = serde_json::from_str(&data).unwrap();
 
@@ -131,6 +131,8 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
     });
 
     let tx = state.tx.clone();
+
+    // TODO: maybe do some logging here for None, Err, other Message cases
     while let Some(Ok(Message::Text(data))) = receiver.next().await {
         let msg: GameMessage = serde_json::from_str(&data).unwrap();
         update_state_on_message(&state, msg.clone());
@@ -139,21 +141,22 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
     }
 
     //  send a message that the player disconnected to others
-    println!("player LEAVING");
     if let Some(msg) = player_left_msg {
         update_state_on_message(&state, msg.clone());
         let msg = serde_json::to_string(&msg).unwrap();
         state.tx.send(msg).unwrap();
+    } else {
+        tracing::warn!("PlayerLeft message wasn't set");
     }
 }
 
 // update our "global" copy of state
 fn update_state_on_message(state: &AppState, msg: GameMessage) {
-    println!("update_state_on_message");
     let mut games = state.games.lock().unwrap();
     if let Some(game) = games.get(&msg.game_id) {
         let game = (*game).clone().reduce(msg);
-        println!("game updated: {:#?}", &game);
         games.insert(game.id, game);
+    } else {
+        tracing::warn!("trying to update game that doesn't exists");
     }
 }
