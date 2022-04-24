@@ -24,7 +24,7 @@ fn switch(routes: &Route) -> Html {
             html! { <Home /> }
         }
         Route::PokerGame { id } => {
-            html! { <PokerGame id={id.clone()} /> }
+            html! { <PokerGame id={*id} /> }
         }
         Route::NotFound => {
             html! { <PageNotFound /> }

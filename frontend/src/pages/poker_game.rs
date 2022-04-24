@@ -61,32 +61,15 @@ pub fn poker_game(props: &Props) -> Html {
 
     let ws_ref = use_mut_ref(|| {
         let ws = WebSocket::open("ws://localhost:3000/api/game").unwrap();
-        log::info!("websocket opened");
         let (ws_write, mut ws_read) = ws.split();
 
         let state = state.clone();
         spawn_local(async move {
-            while let Some(msg) = ws_read.next().await {
-                match msg {
-                    Ok(Message::Text(data)) => {
-                        log::debug!("[yew] text from websocket: {}", data);
-
-                        if let Ok(action) = serde_json::from_str(&data) {
-                            state.dispatch(action);
-                        }
-                    }
-                    Ok(Message::Bytes(b)) => {
-                        let decoded = std::str::from_utf8(&b);
-                        if let Ok(val) = decoded {
-                            log::debug!("[yew] bytes from websocket: {}", val);
-                        }
-                    }
-                    Err(e) => {
-                        log::error!("[yew] ws error: {:?}", e)
-                    }
+            while let Some(Ok(Message::Text(data))) = ws_read.next().await {
+                if let Ok(action) = serde_json::from_str(&data) {
+                    state.dispatch(action);
                 }
             }
-            log::debug!("[yew] WebSocket Closed");
         });
 
         ws_write
@@ -95,7 +78,7 @@ pub fn poker_game(props: &Props) -> Html {
     {
         let user = user.clone();
         let game_id = props.clone().id;
-        let ws_ref = ws_ref.clone();
+        // let ws_ref = ws_ref.clone();
 
         use_effect_with_deps(
             move |_| {
@@ -124,24 +107,6 @@ pub fn poker_game(props: &Props) -> Html {
         );
     }
 
-    // let add_one = {
-    //     let ws_ref = ws_ref.clone();
-    //     Callback::from(move |_| {
-    //         let ws_ref = ws_ref.clone();
-
-    //         spawn_local(async move {
-    //             let action = CounterAction::AddOne;
-    //             let action = serde_json::to_string(&action).unwrap();
-    //             ws_ref
-    //                 .deref()
-    //                 .borrow_mut()
-    //                 .send(Message::Text(action))
-    //                 .await
-    //                 .unwrap();
-    //         });
-    //     })
-    // };
-
     html! {
         <>
             <header class={classes!("mb-12")}>
@@ -149,7 +114,7 @@ pub fn poker_game(props: &Props) -> Html {
                     <Link<Route> to={Route::Home}>{ "Go back home" }</Link<Route>>
                 </nav>
                 <h1 class={classes!("text-3xl")}>
-                    {format!("Welcome ")}
+                    {"Welcome "}
                     <strong class={classes!("text-4xl")}>
                         { user.name }
                     </strong>
@@ -164,7 +129,7 @@ pub fn poker_game(props: &Props) -> Html {
                     }
                 } else if let Some(game) = &(*state).game {
 
-                    let players = (*game).clone().players.clone().into_iter().map(|(id, player)| {
+                    let players = (*game).clone().players.into_iter().map(|(id, player)| {
                         html! {
                             <li key={id.0.to_string()}>
                                 {player.user.name}

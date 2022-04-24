@@ -80,8 +80,8 @@ impl Game {
                         }
                     }
                     None => match message.action {
-                        // non-registered players can only join the game
                         GameAction::PlayerJoined(user) => self.add_player(user),
+                        // GameAction::CurrentState(game) => self = game,
                         _ => (),
                     },
                 }
@@ -127,7 +127,7 @@ impl Game {
             .any(|s| s.status == StoryStatus::Voting);
 
         match self.stories.get(story_id) {
-            Some(story) if story.status == StoryStatus::Init && any_open_for_voting == false => {
+            Some(story) if story.status == StoryStatus::Init && !any_open_for_voting => {
                 let mut story = story.clone();
                 story.status = StoryStatus::Voting;
                 self.stories.insert(story.id, story);

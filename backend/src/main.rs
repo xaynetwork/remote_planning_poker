@@ -87,27 +87,22 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
     // By splitting we can send and receive at the same time.
     let (mut sender, mut receiver) = socket.split();
 
+    let mut player_left_msg: Option<GameMessage> = None;
     // send the current state to the player who joined
-    while let Some(Ok(Message::Text(data))) = receiver.next().await {
+    if let Some(Ok(Message::Text(data))) = receiver.next().await {
         let msg: GameMessage = serde_json::from_str(&data).unwrap();
 
-        if let GameAction::PlayerJoined(user) = &msg.action {
-            println!("PlayerJoined: {:#?}", &user);
-
+        if let GameAction::PlayerJoined(_) = msg.clone().action {
             let current_state_msg = {
                 let mut games = state.games.lock().unwrap();
-                println!("games: {:#?}", &games);
                 if let Some(game) = games.get(&msg.game_id) {
-                    let game = (*game).clone();
-
-                    // TODO: maybe calculate current state
-                    let game = game.reduce(msg.clone());
+                    let game = (*game).clone().reduce(msg.clone());
                     let action = GameAction::CurrentState(game.clone());
+                    let current_state_msg = GameMessage { action, ..msg };
+                    let current_state_msg = serde_json::to_string(&current_state_msg).unwrap();
 
                     games.insert(game.id, game);
 
-                    let current_state_msg = GameMessage { action, ..msg };
-                    let current_state_msg = serde_json::to_string(&current_state_msg).unwrap();
                     Some(current_state_msg)
                 } else {
                     None
@@ -118,16 +113,15 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
             }
 
             state.tx.send(data).unwrap();
+
+            // Prepare PlayerLeft massage for later
+            let action = GameAction::PlayerLeft;
+            player_left_msg = Some(GameMessage { action, ..msg });
         }
-        println!("first while loop break");
-        break;
     }
 
-    println!("move ok after break");
-
-    // Subscribe before sending joined message.
     let mut rx = state.tx.subscribe();
-    let _send_task = tokio::spawn(async move {
+    tokio::spawn(async move {
         while let Ok(msg) = rx.recv().await {
             // In any websocket error, break loop.
             if sender.send(Message::Text(msg)).await.is_err() {
@@ -137,43 +131,23 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
     });
 
     let tx = state.tx.clone();
-    while let Some(msg) = receiver.next().await {
-        if let Ok(msg) = msg {
-            match msg {
-                Message::Text(data) => {
-                    let msg: GameMessage = serde_json::from_str(&data).unwrap();
-                    let mut games = state.games.lock().unwrap();
+    while let Some(Ok(Message::Text(data))) = receiver.next().await {
+        let msg: GameMessage = serde_json::from_str(&data).unwrap();
+        let mut games = state.games.lock().unwrap();
 
-                    if let Some(game) = games.get(&msg.game_id) {
-                        println!("OLD game: {:#?}", &game);
+        if let Some(game) = games.get(&msg.game_id) {
+            // update our "global" copy of state
+            let msg = msg.clone();
+            let game = (*game).clone();
+            let game = game.reduce(msg);
+            games.insert(game.id, game.clone());
 
-                        let msg = msg.clone();
-                        let game = (*game).clone();
-                        let game = game.reduce(msg);
-
-                        println!("NEW game: {:#?}", &game);
-
-                        games.insert(game.id, game.clone());
-
-                        tx.send(data).unwrap();
-                    }
-                }
-                Message::Close(_) => {
-                    println!("CLOSE client disconnected");
-                    return;
-                }
-                Message::Binary(_) => todo!(),
-                Message::Ping(_) => todo!(),
-                Message::Pong(_) => todo!(),
-            }
-            // } else if let Err(err) = msg {
-            //     println!("ERR client disconnected: {:?}", err);
-            //     return;
-        };
+            // send the message to every subscriber
+            tx.send(data).unwrap();
+        }
     }
 
-    // let action = GameAction::PlayerLeft;
-    // let current_state_msg = GameMessage { action, ..msg };
-    // let current_state_msg = serde_json::to_string(&current_state_msg).unwrap();
-    println!("EXIT client disconnected");
+    //  send a message that the player disconnected to others
+    let player_left_msg = serde_json::to_string(&player_left_msg.unwrap()).unwrap();
+    state.tx.send(player_left_msg).unwrap();
 }
