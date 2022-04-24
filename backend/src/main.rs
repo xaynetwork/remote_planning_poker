@@ -133,21 +133,27 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
     let tx = state.tx.clone();
     while let Some(Ok(Message::Text(data))) = receiver.next().await {
         let msg: GameMessage = serde_json::from_str(&data).unwrap();
-        let mut games = state.games.lock().unwrap();
-
-        if let Some(game) = games.get(&msg.game_id) {
-            // update our "global" copy of state
-            let msg = msg.clone();
-            let game = (*game).clone();
-            let game = game.reduce(msg);
-            games.insert(game.id, game.clone());
-
-            // send the message to every subscriber
-            tx.send(data).unwrap();
-        }
+        update_state_on_message(&state, msg.clone());
+        // send the message to every subscriber
+        tx.send(data).unwrap();
     }
 
     //  send a message that the player disconnected to others
-    let player_left_msg = serde_json::to_string(&player_left_msg.unwrap()).unwrap();
-    state.tx.send(player_left_msg).unwrap();
+    println!("player LEAVING");
+    if let Some(msg) = player_left_msg {
+        update_state_on_message(&state, msg.clone());
+        let msg = serde_json::to_string(&msg).unwrap();
+        state.tx.send(msg).unwrap();
+    }
+}
+
+// update our "global" copy of state
+fn update_state_on_message(state: &AppState, msg: GameMessage) {
+    println!("update_state_on_message");
+    let mut games = state.games.lock().unwrap();
+    if let Some(game) = games.get(&msg.game_id) {
+        let game = (*game).clone().reduce(msg);
+        println!("game updated: {:#?}", &game);
+        games.insert(game.id, game);
+    }
 }

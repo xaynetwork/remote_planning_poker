@@ -93,11 +93,12 @@ impl Game {
 
     fn add_player(&mut self, user: User) {
         let player = Player::new(user);
-        println!("add player: {:#?}", &player);
         self.players.insert(player.user.id, player);
     }
 
     fn remove_player(&mut self, user_id: &UserId) {
+        // TODO: what if admin leaves? when he rejoins
+        // he has only a player role..
         self.players.remove(user_id);
     }
 
