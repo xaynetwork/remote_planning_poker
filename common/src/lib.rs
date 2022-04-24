@@ -220,7 +220,7 @@ pub struct Vote {
 }
 
 #[derive(PartialEq, Eq, Hash, Clone, Copy, Serialize, Deserialize, Debug)]
-pub struct UserId(Uuid);
+pub struct UserId(pub Uuid);
 
 #[derive(PartialEq, Clone, Serialize, Deserialize, Debug)]
 pub struct User {

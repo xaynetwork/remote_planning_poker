@@ -1,4 +1,4 @@
-use common::{Game, GameAction, GameId, GameMessage, Player, User};
+use common::{Game, GameAction, GameId, GameMessage, User};
 use futures::{SinkExt, StreamExt};
 use gloo_net::websocket::{futures::WebSocket, Message};
 use std::{ops::Deref, rc::Rc};
@@ -33,17 +33,24 @@ impl Reducible for GameState {
 
     /// Reducer Function
     fn reduce(self: Rc<Self>, action: Self::Action) -> Rc<Self> {
-        // match action.action {
-        //     GameAction::
-        // }
-
-        // let game = self.game.clone().reduce(action);
-
-        Self {
-            game: None,
-            is_loading: true,
+        match action.action {
+            GameAction::CurrentState(game) => Self {
+                game: Some(game),
+                is_loading: false,
+            }
+            .into(),
+            _ => {
+                if let Some(game) = &self.game {
+                    Self {
+                        game: Some((*game).clone().reduce(action)),
+                        is_loading: false,
+                    }
+                    .into()
+                } else {
+                    self
+                }
+            }
         }
-        .into()
     }
 }
 
@@ -57,16 +64,16 @@ pub fn poker_game(props: &Props) -> Html {
         log::info!("websocket opened");
         let (ws_write, mut ws_read) = ws.split();
 
-        // let counter = counter.clone();
+        let state = state.clone();
         spawn_local(async move {
             while let Some(msg) = ws_read.next().await {
                 match msg {
                     Ok(Message::Text(data)) => {
                         log::debug!("[yew] text from websocket: {}", data);
 
-                        // if let Ok(action) = serde_json::from_str(&data) {
-                        //     counter.dispatch(action);
-                        // }
+                        if let Ok(action) = serde_json::from_str(&data) {
+                            state.dispatch(action);
+                        }
                     }
                     Ok(Message::Bytes(b)) => {
                         let decoded = std::str::from_utf8(&b);
@@ -156,6 +163,15 @@ pub fn poker_game(props: &Props) -> Html {
                         </div>
                     }
                 } else if let Some(game) = &(*state).game {
+
+                    let players = (*game).clone().players.clone().into_iter().map(|(id, player)| {
+                        html! {
+                            <li key={id.0.to_string()}>
+                                {player.user.name}
+                            </li>
+                        }
+                    }).collect::<Html>();
+
                     html!{
                         <div class={classes!("flex", "bg-white")}>
 
@@ -166,8 +182,9 @@ pub fn poker_game(props: &Props) -> Html {
                             <aside class={classes!("flex-initial", "w-80", "p-4", "bg-red-200")}>
                                 <h3>{"Players"}</h3>
 
-                                // <ul>
-                                // </ul>
+                                <ul>
+                                    {players}
+                                </ul>
                             </aside>
 
                         </div>
@@ -180,14 +197,6 @@ pub fn poker_game(props: &Props) -> Html {
                     }
                 }
             }
-
-
-
-            // <div class={classes!("flex", "shadow-md", "bg-white")}>
-            //     <button class={classes!("py-2", "px-4", "bg-red-200")} onclick={subtract_one}>{ "-1" }</button>
-            //     <div class={classes!("p-2", "flex-1", "text-2xl", "text-center")}>{ counter.state.count }</div>
-            //     <button class={classes!("py-2", "px-4","bg-green-200")} onclick={add_one}>{ "+1" }</button>
-            // </div>
         </>
     }
 }
