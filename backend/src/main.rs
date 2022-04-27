@@ -5,7 +5,7 @@ use axum::{
     },
     http::StatusCode,
     response::IntoResponse,
-    routing::{get, post},
+    routing::get,
     Json, Router,
 };
 use common::{Game, GameAction, GameId, GameMessage, User};
