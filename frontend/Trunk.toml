@@ -5,13 +5,10 @@ backend = "http://localhost:3000/api/"
 backend = "ws://localhost:3000/api/"
 ws = true
 
-[watch]
-ignore = ['tailwind.css']
-
 [[hooks]]
 stage = "pre_build"
 command = "sh"
 command_arguments = [
   "-c",
-  "npx tailwindcss -c tailwind.config.js -o tailwind.css",
+  "npx tailwindcss -c tailwind.config.js -o $TRUNK_STAGING_DIR/tailwind.css",
 ]
