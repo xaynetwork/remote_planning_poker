@@ -6,7 +6,7 @@ backend = "ws://localhost:3000/api/"
 ws = true
 
 [[hooks]]
-stage = "pre_build"
+stage = "build"
 command = "sh"
 command_arguments = [
   "-c",

@@ -93,31 +93,37 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
         let msg: GameMessage = serde_json::from_str(&data).unwrap();
 
         if let GameAction::PlayerJoined(_) = msg.clone().action {
-            let current_state_msg = {
+            let action = {
                 let mut games = state.games.lock().unwrap();
                 if let Some(game) = games.get(&msg.game_id) {
                     let game = (*game).clone().reduce(msg.clone());
-                    let action = GameAction::CurrentState(game.clone());
-                    let current_state_msg = GameMessage { action, ..msg };
-                    let current_state_msg = serde_json::to_string(&current_state_msg).unwrap();
+                    games.insert(game.id, game.clone());
 
-                    games.insert(game.id, game);
-
-                    Some(current_state_msg)
+                    GameAction::CurrentState(game)
                 } else {
-                    None
+                    GameAction::GameNotFound(msg.game_id)
                 }
             };
-            if let Some(current_state_msg) = current_state_msg {
-                let _ = sender.send(Message::Text(current_state_msg)).await;
-            }
+            let response = GameMessage { action, ..msg };
+            let response = serde_json::to_string(&response).unwrap();
 
+            // send a response to the player who joined
+            let _ = sender.send(Message::Text(response)).await;
+
+            // send PlayerJoined message to other players
             state.tx.send(data).unwrap();
 
             // Prepare PlayerLeft massage for later
             let action = GameAction::PlayerLeft;
             player_left_msg = Some(GameMessage { action, ..msg });
+        } else {
+            tracing::warn!(
+                "The first message from connected user should be 'PlayerJoined', not {:#?}",
+                msg
+            );
         }
+    } else {
+        tracing::warn!("there was a problem with receiving the first message");
     }
 
     let mut rx = state.tx.subscribe();

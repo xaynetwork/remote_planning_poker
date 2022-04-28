@@ -24,7 +24,7 @@ pub fn home() -> Html {
 
             if response.ok() {
                 let game_id: GameId = response.json().await.unwrap();
-                let id = game_id.0;
+                let id = game_id.to_uuid();
                 history.push(Route::PokerGame { id })
             }
         });

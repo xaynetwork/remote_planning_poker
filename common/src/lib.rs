@@ -1,10 +1,11 @@
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt};
 use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum GameAction {
     CurrentState(Game),
+    GameNotFound(GameId),
     PlayerJoined(User),
     PlayerLeft,
     StoryAdded(StoryInfo),
@@ -24,7 +25,23 @@ pub struct GameMessage {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Debug)]
-pub struct GameId(pub Uuid);
+pub struct GameId(Uuid);
+
+impl GameId {
+    pub fn new(id: Uuid) -> Self {
+        Self(id)
+    }
+
+    pub fn to_uuid(&self) -> Uuid {
+        self.0
+    }
+}
+
+impl fmt::Display for GameId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct Game {
@@ -35,71 +52,78 @@ pub struct Game {
 
 impl Game {
     pub fn new(user: User) -> Self {
-        let id = GameId(Uuid::new_v4());
         let player = Player::new_admin(user);
         let mut players: HashMap<UserId, Player> = HashMap::new();
         players.insert(player.user.id, player);
 
         Game {
-            id,
-            players,
+            id: GameId(Uuid::new_v4()),
             stories: HashMap::new(),
+            players,
         }
     }
 
     pub fn reduce(mut self, message: GameMessage) -> Self {
-        match message {
-            // only deal with messages concerning same game
-            GameMessage { game_id, .. } if game_id == self.id => {
-                // check if player has already joined the game
-                match self.players.get(&message.user_id) {
-                    Some(player) => {
-                        let is_admin = player.role == PlayerRole::Admin;
-                        match message.action {
-                            GameAction::StoryAdded(story_info) if is_admin => {
-                                self.add_story(story_info)
-                            }
-                            GameAction::StoryUpdated(story_id, story_info) if is_admin => {
-                                self.update_story(&story_id, story_info)
-                            }
-                            GameAction::StoryRemoved(story_id) if is_admin => {
-                                self.remove_story(&story_id)
-                            }
-                            GameAction::VotingOpened(story_id) if is_admin => {
-                                self.open_story_for_voting(&story_id)
-                            }
-                            GameAction::VotesRevealed(story_id) if is_admin => {
-                                self.reveal_votes(&story_id)
-                            }
-                            GameAction::VoteCasted(story_id, vote) => {
-                                let player_id = player.user.id;
-                                self.cast_vote(&story_id, player_id, vote)
-                            }
-                            GameAction::PlayerLeft => self.remove_player(&message.user_id),
-                            _ => (),
-                        }
-                    }
-                    None => match message.action {
-                        GameAction::PlayerJoined(user) => self.add_player(user),
-                        // GameAction::CurrentState(game) => self = game,
-                        _ => (),
-                    },
+        if self.id != message.game_id {
+            return self;
+        }
+
+        if let GameAction::PlayerJoined(user) = message.action.clone() {
+            self.add_player(user);
+        } else if let Some(player) = self.players.get(&message.user_id) {
+            let is_admin = player.role == PlayerRole::Admin;
+            match message.action {
+                GameAction::StoryAdded(story_info) if is_admin => self.add_story(story_info),
+                GameAction::StoryUpdated(story_id, story_info) if is_admin => {
+                    self.update_story(&story_id, story_info)
                 }
-            }
-            _ => (),
+                GameAction::StoryRemoved(story_id) if is_admin => self.remove_story(&story_id),
+                GameAction::VotingOpened(story_id) if is_admin => {
+                    self.open_story_for_voting(&story_id)
+                }
+                GameAction::VotesRevealed(story_id) if is_admin => self.reveal_votes(&story_id),
+                GameAction::VoteCasted(story_id, vote) => {
+                    let player_id = player.user.id;
+                    self.cast_vote(&story_id, player_id, vote)
+                }
+                GameAction::PlayerLeft => self.remove_player(&message.user_id),
+                // we don't process the rest
+                GameAction::StoryAdded(_)
+                | GameAction::StoryUpdated(_, _)
+                | GameAction::StoryRemoved(_)
+                | GameAction::CurrentState(_)
+                | GameAction::GameNotFound(_)
+                | GameAction::PlayerJoined(_)
+                | GameAction::ResultsApproved(_)
+                | GameAction::VotingOpened(_)
+                | GameAction::VotesRevealed(_) => (),
+            };
         }
         self
     }
 
     fn add_player(&mut self, user: User) {
-        let player = Player::new(user);
+        let player = match self.players.get(&user.id) {
+            Some(player) => Player {
+                active: true,
+                ..(*player).clone()
+            },
+            None => Player::new(user, PlayerRole::Player),
+        };
+        println!("add_player: {:#?},", player);
         self.players.insert(player.user.id, player);
     }
 
     fn remove_player(&mut self, user_id: &UserId) {
-        // TODO: what if admin leaves? when he rejoins
-        // he has only a player role..
-        self.players.remove(user_id);
+        if let Some(player) = self.players.get(user_id) {
+            let player = Player {
+                active: false,
+                ..(*player).clone()
+            };
+            self.players.insert(player.user.id, player);
+        } else {
+            // user didn't registered in the game
+        }
     }
 
     fn add_story(&mut self, info: StoryInfo) {
@@ -166,6 +190,12 @@ impl Game {
 #[derive(PartialEq, Eq, Hash, Clone, Copy, Serialize, Deserialize, Debug)]
 pub struct StoryId(Uuid);
 
+impl fmt::Display for StoryId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
 #[derive(PartialEq, Clone, Serialize, Deserialize, Debug)]
 pub enum StoryStatus {
     Init,
@@ -221,7 +251,13 @@ pub struct Vote {
 }
 
 #[derive(PartialEq, Eq, Hash, Clone, Copy, Serialize, Deserialize, Debug)]
-pub struct UserId(pub Uuid);
+pub struct UserId(Uuid);
+
+impl fmt::Display for UserId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
 
 #[derive(PartialEq, Clone, Serialize, Deserialize, Debug)]
 pub struct User {
@@ -248,16 +284,16 @@ pub enum PlayerRole {
 pub struct Player {
     pub user: User,
     pub role: PlayerRole,
+    pub active: bool,
 }
 
 impl Player {
-    pub fn new(user: User) -> Self {
-        let role = PlayerRole::Player;
-        Player { user, role }
+    pub fn new(user: User, role: PlayerRole) -> Self {
+        let active = true;
+        Player { user, role, active }
     }
 
     pub fn new_admin(user: User) -> Self {
-        let role = PlayerRole::Admin;
-        Player { user, role }
+        Player::new(user, PlayerRole::Admin)
     }
 }

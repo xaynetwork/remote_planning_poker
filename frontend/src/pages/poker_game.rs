@@ -1,30 +1,20 @@
-use common::{Game, GameAction, GameId, GameMessage, User};
+use common::{Game, GameAction, GameId, GameMessage, PlayerRole, User};
 use futures::{SinkExt, StreamExt};
 use gloo_net::websocket::{futures::WebSocket, Message};
 use std::{ops::Deref, rc::Rc};
 use uuid::Uuid;
 use wasm_bindgen_futures::spawn_local;
 use yew::prelude::*;
-use yew_router::prelude::*;
-
-use crate::Route;
 
 #[derive(Clone, Debug, Eq, PartialEq, Properties)]
 pub struct Props {
     pub id: Uuid,
 }
 
-struct GameState {
-    game: Option<Game>,
-    is_loading: bool,
-}
-
-impl Default for GameState {
-    fn default() -> Self {
-        let game = None;
-        let is_loading = true;
-        Self { game, is_loading }
-    }
+enum GameState {
+    Loading,
+    Playing(Game),
+    NotFound,
 }
 
 impl Reducible for GameState {
@@ -32,32 +22,28 @@ impl Reducible for GameState {
     type Action = GameMessage;
 
     /// Reducer Function
-    fn reduce(self: Rc<Self>, action: Self::Action) -> Rc<Self> {
-        match action.action {
-            GameAction::CurrentState(game) => Self {
-                game: Some(game),
-                is_loading: false,
+    fn reduce(self: Rc<Self>, message: Self::Action) -> Rc<Self> {
+        match self.deref() {
+            GameState::Loading => match message.action {
+                GameAction::CurrentState(game) => GameState::Playing(game),
+                GameAction::GameNotFound(_) => GameState::NotFound,
+                // TODO: this shouldn't happen, so figure out how to handle it
+                _ => GameState::Loading,
+            },
+            GameState::Playing(game) => {
+                let game = game.clone().reduce(message);
+                GameState::Playing(game)
             }
-            .into(),
-            _ => {
-                if let Some(game) = &self.game {
-                    Self {
-                        game: Some((*game).clone().reduce(action)),
-                        is_loading: false,
-                    }
-                    .into()
-                } else {
-                    self
-                }
-            }
+            GameState::NotFound => GameState::NotFound,
         }
+        .into()
     }
 }
 
 #[function_component(PokerGame)]
 pub fn poker_game(props: &Props) -> Html {
     let user = use_context::<User>().expect("no user ctx found");
-    let state = use_reducer(GameState::default);
+    let state = use_reducer(|| GameState::Loading);
 
     let ws_ref = use_mut_ref(|| {
         let ws = WebSocket::open("ws://localhost:3000/api/game").unwrap();
@@ -77,23 +63,19 @@ pub fn poker_game(props: &Props) -> Html {
 
     {
         let user = user.clone();
-        let game_id = props.clone().id;
+        let id = props.clone().id;
         // let ws_ref = ws_ref.clone();
 
         use_effect_with_deps(
             move |_| {
                 spawn_local(async move {
-                    let game_id = GameId(game_id);
-                    let user_id = user.id;
-                    let action = GameAction::PlayerJoined(user);
                     let msg = GameMessage {
-                        action,
-                        game_id,
-                        user_id,
+                        user_id: user.id,
+                        game_id: GameId::new(id),
+                        action: GameAction::PlayerJoined(user),
                     };
                     let action = serde_json::to_string(&msg).unwrap();
 
-                    log::info!("joining: {:?}", action);
                     ws_ref
                         .deref()
                         .borrow_mut()
@@ -107,61 +89,69 @@ pub fn poker_game(props: &Props) -> Html {
         );
     }
 
-    html! {
-        <>
-            <header class={classes!("mb-12")}>
-                <nav class={classes!("py-4")}>
-                    <Link<Route> to={Route::Home}>{ "Go back home" }</Link<Route>>
-                </nav>
-                <h1 class={classes!("text-3xl")}>
-                    {"Welcome "}
-                    <strong class={classes!("text-4xl")}>
-                        { user.name }
-                    </strong>
-                </h1>
-            </header>
-            {
-                if state.is_loading {
-                    html!{
-                        <div class={classes!("p-4", "bg-yellow-200")}>
-                            <h2>{"is loading..."}</h2>
-                        </div>
+    match state.deref() {
+        GameState::Loading => html! {
+            <div class={classes!("p-4", "bg-yellow-200")}>
+                <h2>{"Joining game..."}</h2>
+            </div>
+        },
+        GameState::NotFound => html! {
+            <div class={classes!("p-4", "bg-red-200")}>
+                <h2>{"Game not found"}</h2>
+            </div>
+        },
+        GameState::Playing(game) => {
+            let stories = game
+                .clone()
+                .stories
+                .into_iter()
+                .map(|(id, story)| {
+                    html! {
+                        <article key={id.to_string()}>
+                            <h3>{format!("Story: {}", &story.info.title)}</h3>
+                        </article>
                     }
-                } else if let Some(game) = &(*state).game {
+                })
+                .collect::<Html>();
 
-                    let players = (*game).clone().players.into_iter().map(|(id, player)| {
-                        html! {
-                            <li key={id.0.to_string()}>
-                                {player.user.name}
-                            </li>
-                        }
-                    }).collect::<Html>();
+            let players = game
+                .clone()
+                .players
+                .into_iter()
+                .filter(|(_, player)| player.active)
+                .map(|(id, player)| {
+                    html! {
+                        <li key={id.to_string()}>
+                            {&player.user.name}
 
-                    html!{
-                        <div class={classes!("flex", "bg-white")}>
+                            if let PlayerRole::Admin = player.role {
+                                <span>{" (admin)"}</span>
+                            }
 
-                            <section class={classes!("flex-1", "p-4", "bg-blue-200")}>
-                                <h2>{game.id.0}</h2>
-                            </section>
-
-                            <aside class={classes!("flex-initial", "w-80", "p-4", "bg-red-200")}>
-                                <h3>{"Players"}</h3>
-
-                                <ul>
-                                    {players}
-                                </ul>
-                            </aside>
-
-                        </div>
+                        </li>
                     }
-                } else {
-                    html!{
-                        <div class={classes!("p-4", "bg-yellow-200")}>
-                            <h2>{"no game fetched"}</h2>
-                        </div>
-                    }
-                }
+                })
+                .collect::<Html>();
+
+            html! {
+                <div class={classes!("flex", "bg-white")}>
+                    <section class={classes!("flex-1", "p-4", "bg-blue-200")}>
+
+                        <h2>{game.id}</h2>
+
+                        { stories }
+
+                    </section>
+                    <aside class={classes!("flex-initial", "w-80", "p-4", "bg-red-200")}>
+
+                        <h3>{"Connected players:"}</h3>
+                        <ul>
+                            {players}
+                        </ul>
+
+                    </aside>
+                </div>
             }
-        </>
+        }
     }
 }
