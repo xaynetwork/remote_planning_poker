@@ -8,14 +8,21 @@ pub struct LayoutProps {
 #[function_component(Layout)]
 pub fn layout(props: &LayoutProps) -> Html {
     html! {
-        <main
+        <div
             class={classes!(
-                "p-4",
                 "min-h-screen",
-                "bg-slate-200",
+                "bg-slate-300",
+                "flex", "flex-col"
             )}
         >
-            { props.children.clone() }
-        </main>
+            <main class={classes!("p-4", "bg-slate-200", "flex-auto")}>
+                { props.children.clone() }
+            </main>
+            <footer class={classes!("p-4", "text-center")}>
+                <span class={classes!("text-xs", "text-slate-600")}>
+                    {"Copyleft by Xayn"}
+                </span>
+            </footer>
+        </div>
     }
 }

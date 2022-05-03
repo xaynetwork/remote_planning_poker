@@ -8,10 +8,10 @@ pub enum GameAction {
     GameNotFound(GameId),
     PlayerJoined(User),
     PlayerLeft,
-    StoryAdded(StoryInfo),
+    StoriesAdded(Vec<Story>),
     StoryUpdated(StoryId, StoryInfo),
     StoryRemoved(StoryId),
-    VotingOpened(StoryId), // also for reopening voting
+    VotingOpened(StoryId),
     VoteCasted(StoryId, VoteValue),
     VotesRevealed(StoryId),
     ResultsApproved(StoryId),
@@ -73,7 +73,7 @@ impl Game {
         } else if let Some(player) = self.players.get(&message.user_id) {
             let is_admin = player.role == PlayerRole::Admin;
             match message.action {
-                GameAction::StoryAdded(story_info) if is_admin => self.add_story(story_info),
+                GameAction::StoriesAdded(stories) if is_admin => self.add_stories(stories),
                 GameAction::StoryUpdated(story_id, story_info) if is_admin => {
                     self.update_story(&story_id, story_info)
                 }
@@ -82,13 +82,14 @@ impl Game {
                     self.open_story_for_voting(&story_id)
                 }
                 GameAction::VotesRevealed(story_id) if is_admin => self.reveal_votes(&story_id),
+                GameAction::ResultsApproved(story_id) if is_admin => self.accept_round(&story_id),
                 GameAction::VoteCasted(story_id, vote) => {
                     let player_id = player.user.id;
                     self.cast_vote(&story_id, player_id, vote)
                 }
                 GameAction::PlayerLeft => self.remove_player(&message.user_id),
                 // we don't process the rest
-                GameAction::StoryAdded(_)
+                GameAction::StoriesAdded(_)
                 | GameAction::StoryUpdated(_, _)
                 | GameAction::StoryRemoved(_)
                 | GameAction::CurrentState(_)
@@ -110,7 +111,6 @@ impl Game {
             },
             None => Player::new(user, PlayerRole::Player),
         };
-        println!("add_player: {:#?},", player);
         self.players.insert(player.user.id, player);
     }
 
@@ -126,9 +126,9 @@ impl Game {
         }
     }
 
-    fn add_story(&mut self, info: StoryInfo) {
-        let story = Story::new(info);
-        self.stories.insert(story.id, story);
+    fn add_stories(&mut self, stories: Vec<Story>) {
+        let to_add: HashMap<_, _> = stories.into_iter().map(|s| (s.id, s)).collect();
+        self.stories.extend(to_add);
     }
 
     fn update_story(&mut self, story_id: &StoryId, info: StoryInfo) {
@@ -146,19 +146,36 @@ impl Game {
     }
 
     fn open_story_for_voting(&mut self, story_id: &StoryId) {
-        let any_open_for_voting = self
+        let stories: HashMap<StoryId, Story> = self
             .stories
-            .values()
-            .any(|s| s.status == StoryStatus::Voting);
+            .clone()
+            .into_iter()
+            .map(|(id, story)| {
+                let story = match story.status {
+                    // do nothing for approved stories
+                    StoryStatus::Approved => story,
+                    // open story for voting or reopen story (clear votes)
+                    StoryStatus::Init | StoryStatus::Voting | StoryStatus::Revealed
+                        if story_id == &id =>
+                    {
+                        Story {
+                            status: StoryStatus::Voting,
+                            votes: HashMap::new(),
+                            ..story
+                        }
+                    }
+                    // close other stories for voting
+                    _ => Story {
+                        status: StoryStatus::Init,
+                        votes: HashMap::new(),
+                        ..story
+                    },
+                };
+                (id, story)
+            })
+            .collect();
 
-        match self.stories.get(story_id) {
-            Some(story) if story.status == StoryStatus::Init && !any_open_for_voting => {
-                let mut story = story.clone();
-                story.status = StoryStatus::Voting;
-                self.stories.insert(story.id, story);
-            }
-            _ => (),
-        }
+        self.stories = stories;
     }
 
     fn cast_vote(&mut self, story_id: &StoryId, player_id: UserId, value: VoteValue) {
@@ -177,9 +194,20 @@ impl Game {
     fn reveal_votes(&mut self, story_id: &StoryId) {
         // can be only when all non-admin players voted
         match self.stories.get(story_id) {
-            Some(story) if story.status == StoryStatus::Voting => {
+            Some(story) if story.status == StoryStatus::Voting && !story.votes.is_empty() => {
                 let mut story = story.clone();
                 story.status = StoryStatus::Revealed;
+                self.stories.insert(story.id, story);
+            }
+            _ => (),
+        }
+    }
+
+    fn accept_round(&mut self, story_id: &StoryId) {
+        match self.stories.get(story_id) {
+            Some(story) if story.status == StoryStatus::Revealed => {
+                let mut story = story.clone();
+                story.status = StoryStatus::Approved;
                 self.stories.insert(story.id, story);
             }
             _ => (),
@@ -196,7 +224,7 @@ impl fmt::Display for StoryId {
     }
 }
 
-#[derive(PartialEq, Clone, Serialize, Deserialize, Debug)]
+#[derive(PartialEq, Eq, Clone, Serialize, Deserialize, Debug)]
 pub enum StoryStatus {
     Init,
     Voting,
@@ -204,13 +232,12 @@ pub enum StoryStatus {
     Approved,
 }
 
-#[derive(Clone, Serialize, Deserialize, Debug)]
+#[derive(PartialEq, Eq, Clone, Serialize, Deserialize, Debug)]
 pub struct StoryInfo {
     pub title: String,
-    pub description: Option<String>,
 }
 
-#[derive(Clone, Serialize, Deserialize, Debug)]
+#[derive(PartialEq, Eq, Clone, Serialize, Deserialize, Debug)]
 pub struct Story {
     pub id: StoryId,
     pub info: StoryInfo,
@@ -227,9 +254,18 @@ impl Story {
             info,
         }
     }
+
+    pub fn estimation(&self) -> f32 {
+        if self.votes.is_empty() {
+            0f32
+        } else {
+            let val: u8 = self.votes.iter().map(|(_, vote)| vote.value as u8).sum();
+            (f32::from(val) / self.votes.len() as f32).round()
+        }
+    }
 }
 
-#[derive(Clone, Copy, Serialize, Deserialize, Debug)]
+#[derive(PartialEq, Eq, Clone, Copy, Serialize, Deserialize, Debug)]
 pub enum VoteValue {
     Zero = 0,
     One = 1,
@@ -241,11 +277,9 @@ pub enum VoteValue {
     TwentyOne = 21,
     Fourty = 40,
     OneHundred = 100,
-    Break = -1,
-    QuestionMark = -2,
 }
 
-#[derive(Clone, Copy, Serialize, Deserialize, Debug)]
+#[derive(PartialEq, Eq, Clone, Copy, Serialize, Deserialize, Debug)]
 pub struct Vote {
     pub value: VoteValue,
 }

@@ -2,6 +2,7 @@ use web_sys::HtmlInputElement;
 use yew::prelude::*;
 use yew_router::hooks::use_route;
 
+use crate::components::form_input::FormInput;
 use crate::Route;
 
 #[derive(PartialEq, Properties, Clone)]
@@ -32,47 +33,19 @@ pub fn login(props: &LoginProps) -> Html {
     html! {
         <section
             class={classes!(
-                "h-screen", "p-4",
-                "flex", "justify-center", "items-center", "flex-col",
-                "bg-slate-200"
+                "h-96", "flex", "flex-col",
+                "justify-center", "items-center",
             )}
         >
             if let Route::PokerGame { id: _ } = route {
-                <h1
-                    class={classes!(
-                        "px-3", "mb-20",
-                        "sm:text-3xl",
-                        "text-slate-500",
-                    )}
-                >
-                    {"You are about to enter an existing session..."}
+                <h1 class={classes!("mb-20", "sm:text-3xl", "text-slate-500")}>
+                    {"You are about to enter an existing game..."}
                 </h1>
             }
-            <div class={classes!("w-full", "max-w-xs")}>
-                <label
-                    for="name"
-                    class={classes!(
-                        "block",
-                        "px-3", "py-2",
-                        "sm:text-sm", "text-slate-500",
-                    )}
-                >
-                    {"Please provide your name"}
-                </label>
-                <input
-                    class={classes!(
-                        "block",
-                        "w-full",
-                        "px-3", "py-2",
-                        "sm:text-sm",
-                        "text-slate-500",
-                        "rounded-md",
-                        "shadow-sm", "shadow-slate-300",
-                        "outline-none",
-                        "focus:shadow-md",
-                    )}
-                    name="name"
+            <div class="w-full max-w-sm">
+                <FormInput
                     placeholder="What is your name?"
+                    label="Please provide your name"
                     {onkeypress}
                 />
             </div>

@@ -18,7 +18,7 @@ dev:
   wait
 
 dev-backed:
-  cd backend; cargo watch -x run
+  cargo watch -w common -w backend -x check -x 'run --bin backend'
 
 dev-frontend:
   cd frontend; trunk serve

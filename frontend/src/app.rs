@@ -36,11 +36,11 @@ fn switch(routes: &Route) -> Html {
 pub fn app() -> Html {
     html! {
         <BrowserRouter>
-            <UserProvider>
-                <Layout>
+            <Layout>
+                <UserProvider>
                     <Switch<Route> render={Switch::render(switch)} />
-                </Layout>
-            </UserProvider>
+                </UserProvider>
+            </Layout>
         </BrowserRouter>
     }
 }
