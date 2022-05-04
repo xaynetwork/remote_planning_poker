@@ -12,6 +12,7 @@ pub enum GameAction {
     StoryUpdated(StoryId, StoryInfo),
     StoryRemoved(StoryId),
     VotingOpened(StoryId),
+    VotingClosed(StoryId),
     VoteCasted(StoryId, VoteValue),
     VotesRevealed(StoryId),
     ResultsApproved(StoryId),
@@ -63,6 +64,22 @@ impl Game {
         }
     }
 
+    pub fn stories_by_filter(&self, filter: fn(&Story) -> bool) -> Vec<Story> {
+        self.stories
+            .iter()
+            .filter(|(_, story)| filter(story))
+            .map(|(_, story)| story.clone())
+            .collect()
+    }
+
+    pub fn active_players(&self) -> Vec<Player> {
+        self.players
+            .iter()
+            .filter(|(_, player)| player.active)
+            .map(|(_, player)| player.clone())
+            .collect()
+    }
+
     pub fn reduce(mut self, message: GameMessage) -> Self {
         if self.id != message.game_id {
             return self;
@@ -81,6 +98,9 @@ impl Game {
                 GameAction::VotingOpened(story_id) if is_admin => {
                     self.open_story_for_voting(&story_id)
                 }
+                GameAction::VotingClosed(story_id) if is_admin => {
+                    self.close_story_for_voting(&story_id)
+                }
                 GameAction::VotesRevealed(story_id) if is_admin => self.reveal_votes(&story_id),
                 GameAction::ResultsApproved(story_id) if is_admin => self.accept_round(&story_id),
                 GameAction::VoteCasted(story_id, vote) => {
@@ -97,6 +117,7 @@ impl Game {
                 | GameAction::PlayerJoined(_)
                 | GameAction::ResultsApproved(_)
                 | GameAction::VotingOpened(_)
+                | GameAction::VotingClosed(_)
                 | GameAction::VotesRevealed(_) => (),
             };
         }
@@ -176,6 +197,17 @@ impl Game {
             .collect();
 
         self.stories = stories;
+    }
+
+    fn close_story_for_voting(&mut self, story_id: &StoryId) {
+        if let Some(story) = self.stories.get(story_id) {
+            let story = Story {
+                status: StoryStatus::Init,
+                votes: HashMap::new(),
+                ..story.clone()
+            };
+            self.stories.insert(story.id, story);
+        }
     }
 
     fn cast_vote(&mut self, story_id: &StoryId, player_id: UserId, value: VoteValue) {

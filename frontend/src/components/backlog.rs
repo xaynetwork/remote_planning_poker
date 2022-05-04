@@ -1,4 +1,4 @@
-use common::{Story, StoryId, StoryInfo};
+use common::{GameAction, Story, StoryInfo};
 use web_sys::HtmlInputElement;
 use yew::prelude::*;
 
@@ -7,12 +7,7 @@ use crate::components::form_input::FormInput;
 #[derive(Clone, Debug, PartialEq, Properties)]
 pub struct EntryProps {
     pub story: Story,
-    #[prop_or_else(Callback::noop)]
-    pub on_select: Callback<StoryId>,
-    #[prop_or_else(Callback::noop)]
-    pub on_update: Callback<(StoryId, StoryInfo)>,
-    #[prop_or_else(Callback::noop)]
-    pub on_remove: Callback<StoryId>,
+    pub on_action: Callback<GameAction>,
 }
 
 enum EntryState {
@@ -27,13 +22,13 @@ pub fn backlog_story_entry(props: &EntryProps) -> Html {
 
     let on_select = {
         let story_id = props.story.id.clone();
-        let on_select = props.on_select.clone();
-        Callback::from(move |_| on_select.emit(story_id))
+        let on_action = props.on_action.clone();
+        Callback::from(move |_| on_action.emit(GameAction::VotingOpened(story_id)))
     };
     let on_remove = {
         let story_id = props.story.id.clone();
-        let on_remove = props.on_remove.clone();
-        Callback::from(move |_| on_remove.emit(story_id))
+        let on_action = props.on_action.clone();
+        Callback::from(move |_| on_action.emit(GameAction::StoryRemoved(story_id)))
     };
     let on_edit_intent = {
         let state = state.clone();
@@ -50,7 +45,7 @@ pub fn backlog_story_entry(props: &EntryProps) -> Html {
     let onkeypress = {
         let state = state.clone();
         let story_id = props.story.id.clone();
-        let on_update = props.on_update.clone();
+        let on_action = props.on_action.clone();
         Callback::from(move |e: KeyboardEvent| {
             if e.key() == "Enter" {
                 let input: HtmlInputElement = e.target_unchecked_into();
@@ -59,7 +54,7 @@ pub fn backlog_story_entry(props: &EntryProps) -> Html {
 
                 if !title.is_empty() {
                     let title = title.to_string();
-                    on_update.emit((story_id, StoryInfo { title }));
+                    on_action.emit(GameAction::StoryUpdated(story_id, StoryInfo { title }));
                     state.set(EntryState::Default);
                 }
             }
@@ -145,21 +140,40 @@ pub fn backlog_story_entry(props: &EntryProps) -> Html {
 
 #[derive(Clone, PartialEq, Properties)]
 pub struct ListProps {
-    pub children: Children,
+    pub stories: Vec<Story>,
+    pub on_action: Callback<GameAction>,
 }
 
 #[function_component(BacklogStoryList)]
 pub fn backlog_story_list(props: &ListProps) -> Html {
-    html!(
-        <section class="my-12">
-            <h3 class="px-4 text-base font-semibold text-slate-400">
-                {"Stories waiting for estimation..."}
-            </h3>
-            <ul class="my-2 bg-white shadow-md rounded list-none">
-                { props.children.clone() }
-            </ul>
-        </section>
-    )
+    let stories = props
+        .stories
+        .clone()
+        .iter()
+        .map(|story| {
+            let key = story.id.to_string();
+            let story = story.clone();
+            let on_action = props.on_action.clone();
+            html! {
+                <BacklogStoryEntry {key} {story} {on_action} />
+            }
+        })
+        .collect::<Html>();
+
+    if !props.stories.is_empty() {
+        html!(
+            <section class="my-12">
+                <h3 class="px-4 text-base font-semibold text-slate-400">
+                    {"Stories waiting for estimation..."}
+                </h3>
+                <ul class="my-2 bg-white shadow-md rounded list-none">
+                    {stories}
+                </ul>
+            </section>
+        )
+    } else {
+        html!()
+    }
 }
 
 #[function_component(SelectIcon)]
