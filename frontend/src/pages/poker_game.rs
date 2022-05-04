@@ -4,12 +4,18 @@ use common::{
 };
 use futures::{SinkExt, StreamExt};
 use gloo_net::websocket::{futures::WebSocket, Message};
+use log::debug;
 use std::{collections::HashMap, ops::Deref, rc::Rc};
 use uuid::Uuid;
 use wasm_bindgen_futures::spawn_local;
 use yew::prelude::*;
 
-use crate::components::{button::Button, story_form::StoryForm};
+use crate::components::{
+    backlog::{BacklogStoryEntry, BacklogStoryList},
+    button::Button,
+    story_form::StoryForm,
+    vote_value::VoteValueList,
+};
 
 #[derive(Clone, Debug, Eq, PartialEq, Properties)]
 pub struct Props {
@@ -127,7 +133,22 @@ pub fn poker_game(props: &Props) -> Html {
             send_msg(msg);
         })
     };
-
+    let on_update = {
+        let send_msg = send_msg.clone();
+        Callback::from(move |(story_id, info): (StoryId, StoryInfo)| {
+            let send_msg = send_msg.clone();
+            let msg = crate_msg(GameAction::StoryUpdated(story_id, info));
+            send_msg(msg);
+        })
+    };
+    let on_remove = {
+        let send_msg = send_msg.clone();
+        Callback::from(move |story_id: StoryId| {
+            let send_msg = send_msg.clone();
+            let msg = crate_msg(GameAction::StoryRemoved(story_id));
+            send_msg(msg);
+        })
+    };
     let on_vote_click = {
         let send_msg = send_msg.clone();
         Callback::from(move |(story_id, vote_value): (StoryId, VoteValue)| {
@@ -201,17 +222,19 @@ pub fn poker_game(props: &Props) -> Html {
                 })
                 .collect::<Html>();
 
-            let backlog = game
+            let backlog_entries = game
                 .stories
                 .clone()
                 .iter()
                 .filter(|(_, story)| story.status == StoryStatus::Init)
                 .map(|(id, story)| {
                     html! {
-                        <BacklogStory
+                        <BacklogStoryEntry
                             key={id.to_string()}
                             story={story.clone()}
                             on_select={on_select.clone()}
+                            on_update={on_update.clone()}
+                            on_remove={on_remove.clone()}
                         />
                     }
                 })
@@ -253,13 +276,12 @@ pub fn poker_game(props: &Props) -> Html {
 
                         if is_admin {
                             <>
-                                <ul class={classes!("bg-white", "shadow-sm", "rounded", "list-none")}>
-                                    { backlog }
-                                </ul>
+                                <BacklogStoryList>
+                                    { backlog_entries }
+                                </BacklogStoryList>
                                 <StoryForm {on_submit} />
                             </>
                         }
-
 
                     </section>
                     <aside class={classes!("flex-initial", "w-80", "p-4")}>
@@ -274,33 +296,6 @@ pub fn poker_game(props: &Props) -> Html {
             }
         }
     }
-}
-
-#[derive(Clone, Debug, PartialEq, Properties)]
-pub struct BacklogStoryProps {
-    pub story: Story,
-    pub on_select: Callback<StoryId>,
-}
-
-#[function_component(BacklogStory)]
-pub fn backlog_story(props: &BacklogStoryProps) -> Html {
-    let onclick = {
-        let story = props.story.clone();
-        let onselect = props.on_select.clone();
-        Callback::from(move |_| {
-            onselect.emit(story.id);
-        })
-    };
-    html!(
-        <li class={classes!("py-2", "px-4", "border-b")}>
-            <h4>
-                {&props.story.info.title}
-            </h4>
-            <button {onclick}>
-                {"Select"}
-            </button>
-        </li>
-    )
 }
 
 #[derive(Clone, Debug, PartialEq, Properties)]
@@ -358,37 +353,9 @@ pub fn selected_story(props: &SelectedStoryProps) -> Html {
         })
         .collect::<Html>();
 
-    let vote_values = [
-        VoteValue::Zero,
-        VoteValue::One,
-        VoteValue::Two,
-        VoteValue::Three,
-        VoteValue::Five,
-        VoteValue::Eight,
-        VoteValue::Thirteen,
-        VoteValue::TwentyOne,
-        VoteValue::Fourty,
-        VoteValue::OneHundred,
-    ]
-    .iter()
-    .map(|value| {
-        let value = value.clone();
-        let onclick = {
-            let on_vote_click = props.on_vote_click.clone();
-            let story = props.story.clone();
-            let value = value.clone();
-
-            Callback::from(move |_| on_vote_click.emit((story.id, value)))
-        };
-        html!(
-            <VoteValueEntry {value} {onclick} />
-        )
-    })
-    .collect::<Html>();
-
-    let is_admin = match props.players.get(&props.user_id) {
-        Some(player) if player.role == PlayerRole::Admin => true,
-        _ => false,
+    let on_vote_click = {
+        let on_vote_click = props.on_vote_click.clone();
+        Callback::from(move |payload| on_vote_click.emit(payload))
     };
 
     let on_accept_round = {
@@ -415,6 +382,11 @@ pub fn selected_story(props: &SelectedStoryProps) -> Html {
         Callback::from(move |_| on_story_action.emit((story_id, StoryStatus::Init)))
     };
 
+    let is_admin = match props.players.get(&props.user_id) {
+        Some(player) if player.role == PlayerRole::Admin => true,
+        _ => false,
+    };
+
     html!(
         <div class={classes!("mt-2", "mb-4")}>
             <h4 class={classes!("font-bold", "text-2xl", "text-slate-600")}>
@@ -425,9 +397,10 @@ pub fn selected_story(props: &SelectedStoryProps) -> Html {
                 { votes.clone() }
             </ul>
 
-            <VoteValuesList>
-                {vote_values}
-            </VoteValuesList>
+            <VoteValueList
+                story_id={props.story.id}
+                {on_vote_click}
+            />
 
             if is_admin {
                 <div class={classes!("list-none", "my-4", "flex", "flex-wrap")}>
@@ -464,52 +437,6 @@ pub fn estimated_story(props: &EstimatedStoryProps) -> Html {
             <em>
                 {&props.story.estimation()}
             </em>
-        </li>
-    )
-}
-
-#[derive(Clone, PartialEq, Properties)]
-pub struct VoteValuesListProps {
-    pub children: Children,
-}
-
-#[function_component(VoteValuesList)]
-pub fn story_vote_list(props: &VoteValuesListProps) -> Html {
-    html!(
-        <ul
-            class={classes!(
-                "flex", "flex-wrap",
-                "my-8", "p-4",
-                "bg-slate-300", "shadow-inner", "rounded",
-                "list-none"
-            )}
-        >
-            { props.children.clone() }
-        </ul>
-    )
-}
-
-#[derive(Clone, PartialEq, Properties)]
-pub struct VoteValueEntryProps {
-    pub value: VoteValue,
-    pub onclick: Callback<MouseEvent>,
-}
-
-#[function_component(VoteValueEntry)]
-pub fn story_vote(props: &VoteValueEntryProps) -> Html {
-    let onclick = &props.onclick;
-    html!(
-        <li
-            class={classes!(
-                "m-1", "py-2", "w-12",
-                "text-center", "font-light", "text-slate-500",
-                "shadow-md", "rounded-md",
-                "bg-slate-50", "hover:bg-green-200",
-                "cursor-pointer"
-            )}
-            {onclick}
-        >
-            { props.value as u8 }
         </li>
     )
 }

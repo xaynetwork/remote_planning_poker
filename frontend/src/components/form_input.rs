@@ -2,6 +2,7 @@ use yew::prelude::*;
 
 #[derive(PartialEq, Properties, Clone)]
 pub struct FormInputProps {
+    #[prop_or_default]
     pub label: String,
     #[prop_or_default]
     pub placeholder: String,
@@ -15,15 +16,17 @@ pub struct FormInputProps {
 pub fn form_input(props: &FormInputProps) -> Html {
     html! {
         <div class={classes!("w-full")}>
-            <label
-                class={classes!(
-                    "block",
-                    "px-3", "py-2",
-                    "sm:text-sm", "text-slate-500",
-                )}
-            >
-                {props.label.clone()}
-            </label>
+            if !props.label.is_empty() {
+                <label
+                    class={classes!(
+                        "block",
+                        "px-3", "py-2",
+                        "sm:text-sm", "text-slate-500",
+                    )}
+                >
+                    {props.label.clone()}
+                </label>
+            }
             <input
                 class={classes!(
                     "block",
