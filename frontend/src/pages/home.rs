@@ -4,6 +4,7 @@ use wasm_bindgen_futures::spawn_local;
 use yew::prelude::*;
 use yew_router::prelude::*;
 
+use crate::components::button::Button;
 use crate::Route;
 
 #[function_component(Home)]
@@ -31,9 +32,10 @@ pub fn home() -> Html {
     });
 
     html! {
-        <section>
-            <h1>{ "Home" }</h1>
-            <button {onclick}>{ "Generate new game" }</button>
+        <section class="flex justify-center items-center h-full">
+            <Button {onclick}>
+                { "Generate new game" }
+            </Button>
         </section>
     }
 }

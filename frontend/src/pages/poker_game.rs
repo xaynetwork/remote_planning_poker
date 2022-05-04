@@ -176,7 +176,7 @@ pub fn poker_game(props: &Props) -> Html {
                                     {on_action}
                                 />
                                 <StoryForm {on_submit} />
-                                <pre>{STORIES_TO_COPY}</pre>
+                                <pre class="my-8">{STORIES_TO_COPY}</pre>
                             </>
                         }
 

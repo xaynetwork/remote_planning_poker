@@ -15,7 +15,7 @@ pub fn layout(props: &LayoutProps) -> Html {
                 "flex", "flex-col"
             )}
         >
-            <main class={classes!("p-4", "bg-slate-200", "flex-auto")}>
+            <main class={classes!("p-4", "bg-slate-200", "flex-1")} style="flex-basis: 0;">
                 { props.children.clone() }
             </main>
             <footer class={classes!("p-4", "text-center")}>

@@ -9,7 +9,7 @@ pub struct EntryProps {
 #[function_component(ApprovedStory)]
 pub fn approved_story(props: &EntryProps) -> Html {
     html!(
-        <li class="flex items-center mx-2">
+        <li class="flex items-center px-2 border-b">
             <h4
                 class={classes!(
                     "flex-auto", "p-2",
@@ -51,9 +51,13 @@ pub fn approved_story_list(props: &ListProps) -> Html {
         })
         .collect::<Html>();
 
-    html!(
-        <ul class="mb-12 bg-white shadow-sm rounded list-none">
-            {stories}
-        </ul>
-    )
+    if !props.stories.is_empty() {
+        html!(
+            <ul class="mb-12 bg-white shadow-sm rounded list-none">
+                {stories}
+            </ul>
+        )
+    } else {
+        html!()
+    }
 }
