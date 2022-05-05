@@ -1,12 +1,8 @@
-use common::{
-    Game, GameAction, GameId, GameMessage, PlayerRole, Story, StoryInfo, StoryStatus, User,
-};
-use futures::{SinkExt, StreamExt};
-use gloo_net::websocket::{futures::WebSocket, Message};
+use common::{Game, GameAction, GameId, GameMessage, PlayerRole, StoryStatus, User, UserId};
 use std::{ops::Deref, rc::Rc};
 use uuid::Uuid;
-use wasm_bindgen_futures::spawn_local;
 use yew::prelude::*;
+use yew_hooks::{use_web_socket, UseWebSocketReadyState};
 use yew_router::prelude::*;
 
 use crate::{
@@ -55,79 +51,59 @@ impl Reducible for GameState {
 pub fn poker_game(props: &Props) -> Html {
     let user = use_context::<User>().expect("no user ctx found");
     let state = use_reducer(|| GameState::Loading);
+    let ws = use_web_socket("ws://localhost:3000/api/game".to_string());
 
-    let ws_ref = use_mut_ref(|| {
-        let ws = WebSocket::open("ws://localhost:3000/api/game").unwrap();
-        let (ws_write, mut ws_read) = ws.split();
-
-        let state = state.clone();
-        spawn_local(async move {
-            while let Some(Ok(Message::Text(data))) = ws_read.next().await {
-                if let Ok(action) = serde_json::from_str(&data) {
-                    state.dispatch(action);
-                }
-            }
-        });
-
-        ws_write
-    });
-
-    let send_msg = {
+    let prepare_msg = {
         let user_id = user.id.clone();
         let game_id = GameId::new(props.id.clone());
-        let ws_ref = ws_ref.clone();
-
-        move |action: GameAction| {
-            spawn_local(async move {
-                let msg = GameMessage {
-                    user_id,
-                    game_id,
-                    action,
-                };
-                let action = serde_json::to_string(&msg).unwrap();
-
-                ws_ref
-                    .deref()
-                    .borrow_mut()
-                    .send(Message::Text(action))
-                    .await
-                    .unwrap();
-            });
-        }
+        use_ref(|| create_message(&user_id, &game_id))
     };
 
     {
+        let ws = ws.clone();
+        let ws_state = ws.ready_state.clone();
+        let prepare_msg = prepare_msg.clone();
         let user = user.clone();
-        let send_msg = send_msg.clone();
+        // Send `join` message when the connection opens
         use_effect_with_deps(
-            move |_| {
-                send_msg(GameAction::PlayerJoined(user));
+            move |ready_state| {
+                if UseWebSocketReadyState::Open == **ready_state {
+                    let msg = prepare_msg(GameAction::PlayerJoined(user));
+                    ws.send(msg);
+                }
                 || ()
             },
-            (),
+            ws_state, // dependents
         );
     }
 
-    let on_submit = {
-        let send_msg = send_msg.clone();
-        Callback::from(move |stories: Vec<String>| {
-            let send_msg = send_msg.clone();
-            let stories = stories
-                .into_iter()
-                .map(|title| Story::new(StoryInfo { title }))
-                .collect();
-            send_msg(GameAction::StoriesAdded(stories));
-        })
-    };
+    {
+        let ws = ws.clone();
+        let state = state.clone();
+        // Receive message by depending on `ws.message`.
+        use_effect_with_deps(
+            move |message| {
+                if let Some(message) = &**message {
+                    if let Ok(action) = serde_json::from_str(message) {
+                        state.dispatch(action);
+                    }
+                }
+                || ()
+            },
+            ws.message,
+        );
+    }
+
     let on_action = {
-        let send_msg = send_msg.clone();
+        let ws = ws.clone();
+        let prepare_msg = prepare_msg.clone();
         Callback::from(move |action: GameAction| {
-            let send_msg = send_msg.clone();
-            send_msg(action);
+            let msg = prepare_msg(action);
+            ws.send(msg);
         })
     };
 
-    match state.deref() {
+    match &*state {
         GameState::Loading => html! {
             <section class="h-full flex items-center justify-center">
                 <div class="p-4 text-center text-slate-500">
@@ -155,9 +131,9 @@ pub fn poker_game(props: &Props) -> Html {
                     <section class="w-2/3 p-4">
 
                         <ApprovedStoryList stories={approved} />
-                        {selected
-                            .iter()
-                            .map(|story| {
+
+                        {
+                            if let Some(story) = selected.first() {
                                 let key = story.id.to_string();
                                 let story = story.clone();
                                 let user_id = user.id.clone();
@@ -169,17 +145,24 @@ pub fn poker_game(props: &Props) -> Html {
                                         {on_action}
                                     />
                                 }
-                            })
-                            .collect::<Html>()
+                            } else {
+                                html! {
+                                    <section class="mb-12">
+                                        <h3 class="text-center text-2xl text-slate-400">
+                                            {"Waiting for a round to start.."}
+                                        </h3>
+                                    </section>
+                                }
+                            }
                         }
 
                         if is_admin {
                             <>
                                 <BacklogStoryList
                                     stories={backlog}
-                                    {on_action}
+                                    on_action={on_action.clone()}
                                 />
-                                <StoryForm {on_submit} />
+                                <StoryForm {on_action} />
                                 <pre class="my-8">{STORIES_TO_COPY}</pre>
                             </>
                         }
@@ -193,6 +176,20 @@ pub fn poker_game(props: &Props) -> Html {
                 </div>
             }
         }
+    }
+}
+
+fn create_message(user_id: &UserId, game_id: &GameId) -> impl Fn(GameAction) -> String {
+    let user_id = user_id.to_owned();
+    let game_id = game_id.to_owned();
+
+    move |action: GameAction| {
+        let msg = GameMessage {
+            user_id,
+            game_id,
+            action,
+        };
+        serde_json::to_string(&msg).unwrap()
     }
 }
 

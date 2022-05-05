@@ -16,15 +16,18 @@ pub struct UserProviderProps {
 pub fn user_provider(props: &UserProviderProps) -> Html {
     let user = use_state(|| LocalStorage::get(STORAGE_KEY).ok() as Option<User>);
 
-    use_effect_with_deps(
-        move |user| {
-            if let Some(user) = user.deref() {
-                LocalStorage::set(STORAGE_KEY, user).expect("failed to set");
-            }
-            || ()
-        },
-        user.clone(),
-    );
+    {
+        let user = user.clone();
+        use_effect_with_deps(
+            move |user| {
+                if let Some(user) = user.deref() {
+                    LocalStorage::set(STORAGE_KEY, user).expect("failed to set");
+                }
+                || ()
+            },
+            user,
+        )
+    };
 
     let onsubmit = {
         let user = user.clone();

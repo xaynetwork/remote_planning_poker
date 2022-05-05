@@ -210,14 +210,12 @@ name = "frontend"
 version = "0.1.0"
 dependencies = [
  "common",
- "futures",
  "gloo-net",
  "gloo-storage",
  "log",
  "serde_json",
  "uuid",
  "wasm-bindgen",
- "wasm-bindgen-futures",
  "wasm-logger",
  "web-sys",
  "yew",

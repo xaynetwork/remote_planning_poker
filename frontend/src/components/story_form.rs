@@ -1,3 +1,4 @@
+use common::{GameAction, Story, StoryInfo};
 use web_sys::HtmlInputElement;
 use yew::prelude::*;
 
@@ -5,8 +6,7 @@ use crate::components::{button::Button, form_textarea::FormTextarea};
 
 #[derive(PartialEq, Properties, Clone)]
 pub struct Props {
-    #[prop_or_else(Callback::noop)]
-    pub on_submit: Callback<Vec<String>>,
+    pub on_action: Callback<GameAction>,
 }
 
 #[function_component(StoryForm)]
@@ -30,11 +30,19 @@ pub fn story_form(props: &Props) -> Html {
     };
     let onclick = {
         let raw_form = raw_form.clone();
-        let on_submit = props.on_submit.clone();
+        let on_action = props.on_action.clone();
 
         Callback::from(move |_| {
             raw_form.set("".to_string());
-            on_submit.emit(story_titles.clone());
+            let stories = story_titles
+                .iter()
+                .map(|title| {
+                    Story::new(StoryInfo {
+                        title: title.clone(),
+                    })
+                })
+                .collect();
+            on_action.emit(GameAction::StoriesAdded(stories));
         })
     };
 
