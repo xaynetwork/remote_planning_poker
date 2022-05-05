@@ -1,4 +1,4 @@
-use common::Story;
+use common::{Story, Vote};
 use yew::prelude::*;
 
 #[derive(Clone, Debug, PartialEq, Properties)]
@@ -8,6 +8,8 @@ pub struct EntryProps {
 
 #[function_component(ApprovedStory)]
 pub fn approved_story(props: &EntryProps) -> Html {
+    let avrg = &props.story.votes_avrg();
+    let estimation = Vote::get_closest_vote(avrg).value();
     html!(
         <li class="flex items-center px-2 border-b">
             <h4
@@ -25,7 +27,7 @@ pub fn approved_story(props: &EntryProps) -> Html {
                     "rounded", "bg-green-200"
                 )}
             >
-                {&props.story.estimation()}
+                {estimation}
             </strong>
         </li>
     )

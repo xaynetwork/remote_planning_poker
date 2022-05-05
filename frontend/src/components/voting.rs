@@ -1,5 +1,5 @@
 use crate::components::{button::Button, vote_value::VoteValueList};
-use common::{GameAction, Player, PlayerRole, Story, StoryStatus, UserId};
+use common::{GameAction, Player, PlayerRole, Story, StoryStatus, UserId, Vote};
 use std::collections::HashMap;
 use yew::prelude::*;
 
@@ -41,7 +41,7 @@ pub fn selected_story(props: &Props) -> Html {
                         >
                             if is_revealed {
                                 <strong class={classes!("block")}>
-                                    { vote.value as u8 }
+                                    { vote.value() }
                                 </strong>
                             }
                         </div>
@@ -58,10 +58,9 @@ pub fn selected_story(props: &Props) -> Html {
         .collect::<Html>();
 
     let on_vote_click = {
+        let story_id = props.story.id.clone();
         let on_action = props.on_action.clone();
-        Callback::from(move |(story_id, vote_value)| {
-            on_action.emit(GameAction::VoteCasted(story_id, vote_value))
-        })
+        Callback::from(move |vote| on_action.emit(GameAction::VoteCasted(story_id, vote)))
     };
 
     let on_accept_round = {
@@ -109,6 +108,9 @@ pub fn selected_story(props: &Props) -> Html {
         _ => false,
     };
 
+    let avrg = &props.story.votes_avrg();
+    let estimation = Vote::get_closest_vote(avrg).value();
+
     html!(
         <div class={classes!("mt-2", "mb-4")}>
             <h4 class={classes!("font-bold", "text-2xl", "text-slate-500")}>
@@ -119,26 +121,30 @@ pub fn selected_story(props: &Props) -> Html {
                 { votes }
             </ul>
 
-            <VoteValueList
-                story_id={props.story.id}
-                {on_vote_click}
-            />
+            <VoteValueList {on_vote_click} />
 
             if is_admin {
-                <div class={classes!("list-none", "mt-6", "mb-12", "flex", "flex-wrap")}>
-                    <div class="m-1">
-                        <Button disabled={!can_accept} onclick={on_accept_round}>{ "Accept round" }</Button>
+                <>
+                    if can_accept {
+                        <h5 class="m-1 text-xs, text-slate-500">
+                            {format!("Average: {}, Closest estimate: {}", avrg, estimation)}
+                        </h5>
+                    }
+                    <div class={classes!("list-none", "mt-6", "mb-12", "flex", "flex-wrap")}>
+                        <div class="m-1">
+                            <Button disabled={!can_accept} onclick={on_accept_round}>{ "Accept round" }</Button>
+                        </div>
+                        <div class="m-1">
+                            <Button disabled={!can_play_again} onclick={on_play_again}>{ "Play again" }</Button>
+                        </div>
+                        <div class="m-1">
+                            <Button disabled={!can_reveal} onclick={on_reveal_cards}>{ "Reveal cards" }</Button>
+                        </div>
+                        <div class="m-1">
+                            <Button onclick={on_cancel_round}>{ "Cancel round" }</Button>
+                        </div>
                     </div>
-                    <div class="m-1">
-                        <Button disabled={!can_play_again} onclick={on_play_again}>{ "Play again" }</Button>
-                    </div>
-                    <div class="m-1">
-                        <Button disabled={!can_reveal} onclick={on_reveal_cards}>{ "Reveal cards" }</Button>
-                    </div>
-                    <div class="m-1">
-                        <Button onclick={on_cancel_round}>{ "Cancel round" }</Button>
-                    </div>
-                </div>
+                </>
             }
         </div>
     )

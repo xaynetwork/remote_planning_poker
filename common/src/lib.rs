@@ -13,7 +13,7 @@ pub enum GameAction {
     StoryRemoved(StoryId),
     VotingOpened(StoryId),
     VotingClosed(StoryId),
-    VoteCasted(StoryId, VoteValue),
+    VoteCasted(StoryId, Vote),
     VotesRevealed(StoryId),
     ResultsApproved(StoryId),
 }
@@ -210,11 +210,10 @@ impl Game {
         }
     }
 
-    fn cast_vote(&mut self, story_id: &StoryId, player_id: UserId, value: VoteValue) {
+    fn cast_vote(&mut self, story_id: &StoryId, player_id: UserId, vote: Vote) {
         match self.stories.get(story_id) {
             Some(story) if story.status == StoryStatus::Voting => {
                 let mut story = story.clone();
-                let vote = Vote { value };
 
                 story.votes.insert(player_id, vote);
                 self.stories.insert(story.id, story);
@@ -224,7 +223,6 @@ impl Game {
     }
 
     fn reveal_votes(&mut self, story_id: &StoryId) {
-        // can be only when all non-admin players voted
         match self.stories.get(story_id) {
             Some(story) if story.status == StoryStatus::Voting && !story.votes.is_empty() => {
                 let mut story = story.clone();
@@ -287,33 +285,55 @@ impl Story {
         }
     }
 
-    pub fn estimation(&self) -> f32 {
+    pub fn votes_avrg(&self) -> f32 {
         if self.votes.is_empty() {
             0f32
         } else {
-            let val: u8 = self.votes.iter().map(|(_, vote)| vote.value as u8).sum();
-            (f32::from(val) / self.votes.len() as f32).round()
+            let val: i32 = self.votes.iter().map(|(_, vote)| vote.0).sum();
+            val as f32 / self.votes.len() as f32
         }
     }
 }
 
 #[derive(PartialEq, Eq, Clone, Copy, Serialize, Deserialize, Debug)]
-pub enum VoteValue {
-    Zero = 0,
-    One = 1,
-    Two = 2,
-    Three = 3,
-    Five = 5,
-    Eight = 8,
-    Thirteen = 13,
-    TwentyOne = 21,
-    Fourty = 40,
-    OneHundred = 100,
-}
+pub struct Vote(i32);
 
-#[derive(PartialEq, Eq, Clone, Copy, Serialize, Deserialize, Debug)]
-pub struct Vote {
-    pub value: VoteValue,
+const VOTES: [i32; 10] = [0, 1, 2, 3, 5, 8, 13, 21, 40, 100];
+
+impl Vote {
+    pub fn new(value: i32) -> Result<Vote, String> {
+        if VOTES.contains(&value) {
+            Ok(Self(value))
+        } else {
+            Err("Not allowed value".to_string())
+        }
+    }
+
+    pub fn value(&self) -> i32 {
+        self.0
+    }
+
+    pub fn get_allowed_values() -> [i32; 10] {
+        VOTES
+    }
+
+    pub fn get_allowed_votes() -> [Vote; 10] {
+        VOTES.map(|val| Vote::new(val).unwrap())
+    }
+
+    pub fn get_closest_vote(value: &f32) -> Vote {
+        let closest = VOTES
+            .iter()
+            .reduce(|prev, curr| {
+                if (*curr as f32 - value).abs() < (*prev as f32 - value).abs() {
+                    curr
+                } else {
+                    prev
+                }
+            })
+            .unwrap();
+        Vote(*closest)
+    }
 }
 
 #[derive(PartialEq, Eq, Hash, Clone, Copy, Serialize, Deserialize, Debug)]

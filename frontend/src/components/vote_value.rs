@@ -1,15 +1,15 @@
-use common::{StoryId, VoteValue};
+use common::Vote;
 use yew::prelude::*;
 
 #[derive(Clone, PartialEq, Properties)]
 pub struct EntryProps {
-    pub value: VoteValue,
+    pub value: i32,
     #[prop_or_else(Callback::noop)]
     pub onclick: Callback<MouseEvent>,
 }
 
-#[function_component(VoteValueButton)]
-pub fn vote_value_button(props: &EntryProps) -> Html {
+#[function_component(VoteButton)]
+pub fn vote_button(props: &EntryProps) -> Html {
     let onclick = &props.onclick;
     html!(
         <button
@@ -22,49 +22,34 @@ pub fn vote_value_button(props: &EntryProps) -> Html {
             )}
             {onclick}
         >
-            { props.value as u8 }
+            { props.value }
         </button>
     )
 }
 
 #[derive(Clone, PartialEq, Properties)]
 pub struct ListProps {
-    pub story_id: StoryId,
-    #[prop_or_else(Callback::noop)]
-    pub on_vote_click: Callback<(StoryId, VoteValue)>,
+    pub on_vote_click: Callback<Vote>,
 }
 
 #[function_component(VoteValueList)]
 pub fn vote_value_list(props: &ListProps) -> Html {
-    let vote_values = [
-        VoteValue::Zero,
-        VoteValue::One,
-        VoteValue::Two,
-        VoteValue::Three,
-        VoteValue::Five,
-        VoteValue::Eight,
-        VoteValue::Thirteen,
-        VoteValue::TwentyOne,
-        VoteValue::Fourty,
-        VoteValue::OneHundred,
-    ]
-    .iter()
-    .map(|value| {
-        let value = value.clone();
-        let onclick = {
-            let on_vote_click = props.on_vote_click.clone();
-            let story_id = props.story_id.clone();
-            let value = value.clone();
-
-            Callback::from(move |_| on_vote_click.emit((story_id, value)))
-        };
-        html!(
-            <div class="m-1">
-                <VoteValueButton {value} {onclick} />
-            </div>
-        )
-    })
-    .collect::<Html>();
+    let allowed_votes = Vote::get_allowed_votes()
+        .iter()
+        .map(|vote| {
+            let value = vote.value();
+            let onclick = {
+                let vote = vote.clone();
+                let on_vote_click = props.on_vote_click.clone();
+                Callback::from(move |_| on_vote_click.emit(vote))
+            };
+            html!(
+                <div class="m-1">
+                    <VoteButton {value} {onclick} />
+                </div>
+            )
+        })
+        .collect::<Html>();
 
     html!(
         <section
@@ -73,7 +58,7 @@ pub fn vote_value_list(props: &ListProps) -> Html {
                 "bg-slate-300", "shadow-inner", "rounded",
             )}
         >
-            {vote_values}
+            {allowed_votes}
         </section>
     )
 }
