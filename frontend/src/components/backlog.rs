@@ -120,14 +120,14 @@ pub fn backlog_story_entry(props: &EntryProps) -> Html {
     };
 
     html!(
-        <li class="py-6 px-4 border-b flex items-center hover:bg-slate-100 text-slate-500">
+        <li class="py-4 px-4 border-b flex items-center hover:bg-slate-100 text-slate-500">
             if let EntryState::Editing = *state {
                 <FormInput
                     value={props.story.info.title.clone()}
                     {onkeypress}
                 />
             } else {
-                <h4 class="flex-1 text-lg">
+                <h4 class="flex-1 text-base">
                     {props.story.info.title.clone()}
                 </h4>
             }
@@ -162,9 +162,9 @@ pub fn backlog_story_list(props: &ListProps) -> Html {
 
     if !props.stories.is_empty() {
         html!(
-            <section class="my-12">
-                <h3 class="px-4 text-base font-semibold text-slate-400">
-                    {"Stories waiting for estimation..."}
+            <section class="mb-12">
+                <h3 class="px-4 font-semibold text-slate-400">
+                    {"Your backlog"}
                 </h3>
                 <ul class="my-2 bg-white shadow-md rounded list-none">
                     {stories}
@@ -172,7 +172,13 @@ pub fn backlog_story_list(props: &ListProps) -> Html {
             </section>
         )
     } else {
-        html!()
+        html!(
+            <section class="mb-12">
+                <h3 class="text-center text-2xl text-slate-400">
+                    {"Your backlog is empty. Please add some stories."}
+                </h3>
+            </section>
+        )
     }
 }
 

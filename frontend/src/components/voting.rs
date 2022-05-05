@@ -93,14 +93,30 @@ pub fn selected_story(props: &Props) -> Html {
         _ => false,
     };
 
+    let can_accept = match props.story.status {
+        StoryStatus::Revealed => true,
+        _ => false,
+    };
+
+    let can_play_again = match props.story.status {
+        StoryStatus::Revealed => true,
+        StoryStatus::Voting if !props.story.votes.is_empty() => true,
+        _ => false,
+    };
+
+    let can_reveal = match props.story.status {
+        StoryStatus::Voting if !props.story.votes.is_empty() => true,
+        _ => false,
+    };
+
     html!(
         <div class={classes!("mt-2", "mb-4")}>
-            <h4 class={classes!("font-bold", "text-2xl", "text-slate-600")}>
+            <h4 class={classes!("font-bold", "text-2xl", "text-slate-500")}>
                 {&props.story.info.title}
             </h4>
 
             <ul class={classes!("list-none", "my-4", "flex", "flex-wrap")}>
-                { votes.clone() }
+                { votes }
             </ul>
 
             <VoteValueList
@@ -109,15 +125,15 @@ pub fn selected_story(props: &Props) -> Html {
             />
 
             if is_admin {
-                <div class={classes!("list-none", "my-4", "flex", "flex-wrap")}>
+                <div class={classes!("list-none", "mt-6", "mb-12", "flex", "flex-wrap")}>
                     <div class="m-1">
-                        <Button onclick={on_accept_round}>{ "Accept round" }</Button>
+                        <Button disabled={!can_accept} onclick={on_accept_round}>{ "Accept round" }</Button>
                     </div>
                     <div class="m-1">
-                        <Button onclick={on_play_again}>{ "Play again" }</Button>
+                        <Button disabled={!can_play_again} onclick={on_play_again}>{ "Play again" }</Button>
                     </div>
                     <div class="m-1">
-                        <Button onclick={on_reveal_cards}>{ "Reveal cards" }</Button>
+                        <Button disabled={!can_reveal} onclick={on_reveal_cards}>{ "Reveal cards" }</Button>
                     </div>
                     <div class="m-1">
                         <Button onclick={on_cancel_round}>{ "Cancel round" }</Button>

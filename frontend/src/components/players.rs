@@ -13,8 +13,10 @@ pub fn player_entry(props: &EntryProps) -> Html {
     html!(
         <li
             class={classes!(
-                "bg-slate-200", "text-slate-500",
+                "py-2", "px-4", "border-b",
+                "text-slate-500",
                 is_current.then(||Some("font-semibold")),
+                is_current.then(||Some("text-lg")),
             )}
         >
             {&props.player.user.name}
@@ -47,10 +49,10 @@ pub fn player_list(props: &ListProps) -> Html {
 
     html!(
         <div>
-            <h3 class="font-bold">
+            <h3 class="px-4 font-semibold text-slate-400">
                 {"Connected players:"}
             </h3>
-            <ul class="py-4">
+            <ul class="my-2 shadow-inner rounded-md list-none bg-slate-300 bg-opacity-50">
                 {players}
             </ul>
         </div>

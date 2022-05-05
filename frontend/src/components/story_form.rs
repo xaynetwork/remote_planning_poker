@@ -39,9 +39,9 @@ pub fn story_form(props: &Props) -> Html {
     };
 
     html! {
-        <div class={classes!("py-4")}>
+        <div class={classes!("mb-8")}>
             <FormTextarea
-                rows={stories_count + 1}
+                rows={stories_count + 2}
                 label="Add your stories (one per line)"
                 value={raw_form.to_string()}
                 {oninput}

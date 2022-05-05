@@ -7,10 +7,14 @@ use std::{ops::Deref, rc::Rc};
 use uuid::Uuid;
 use wasm_bindgen_futures::spawn_local;
 use yew::prelude::*;
+use yew_router::prelude::*;
 
-use crate::components::{
-    approved::ApprovedStoryList, backlog::BacklogStoryList, players::PlayerList,
-    story_form::StoryForm, voting::SelectedStory,
+use crate::{
+    components::{
+        approved::ApprovedStoryList, backlog::BacklogStoryList, players::PlayerList,
+        story_form::StoryForm, voting::SelectedStory,
+    },
+    Route,
 };
 
 #[derive(Clone, Debug, Eq, PartialEq, Properties)]
@@ -125,14 +129,14 @@ pub fn poker_game(props: &Props) -> Html {
 
     match state.deref() {
         GameState::Loading => html! {
-            <div class={classes!("p-4")}>
-                <h2>{"Joining game..."}</h2>
-            </div>
+            <section class="h-full flex items-center justify-center">
+                <div class="p-4 text-center text-slate-500">
+                    <h2 class="mb-12 text-3xl font-medium">{"Joining a game..."}</h2>
+                </div>
+            </section>
         },
         GameState::NotFound => html! {
-            <div class={classes!("p-4", "bg-red-200")}>
-                <h2>{"Game not found"}</h2>
-            </div>
+            <Redirect<Route> to={Route::NotFound}/>
         },
         GameState::Playing(game) => {
             let approved = game.stories_by_filter(|s| s.status == StoryStatus::Approved);
@@ -147,8 +151,8 @@ pub fn poker_game(props: &Props) -> Html {
             };
 
             html! {
-                <div class={classes!("flex", "max-w-7xl", "mx-auto")}>
-                    <section class={classes!("flex-auto", "p-4")}>
+                <div class="flex max-w-7xl mx-auto">
+                    <section class="w-2/3 p-4">
 
                         <ApprovedStoryList stories={approved} />
                         {selected
@@ -181,7 +185,7 @@ pub fn poker_game(props: &Props) -> Html {
                         }
 
                     </section>
-                    <aside class={classes!("w-80", "p-4")}>
+                    <aside class="w-1/3 p-4">
 
                         <PlayerList {players} />
 
