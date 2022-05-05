@@ -172,7 +172,13 @@ pub fn backlog_story_list(props: &ListProps) -> Html {
             </section>
         }
     } else {
-        html! {}
+        html! {
+            <section class="mb-12">
+                <h3 class="text-center text-2xl text-slate-400">
+                    {"Add some stories to your backlog"}
+                </h3>
+            </section>
+        }
     }
 }
 
