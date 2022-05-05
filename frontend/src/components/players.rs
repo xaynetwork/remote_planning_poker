@@ -10,7 +10,7 @@ pub struct EntryProps {
 pub fn player_entry(props: &EntryProps) -> Html {
     let user = use_context::<User>().expect("no user ctx found");
     let is_current = user.id == props.player.user.id;
-    html!(
+    html! {
         <li
             class={classes!(
                 "py-2", "px-4", "border-b",
@@ -24,7 +24,7 @@ pub fn player_entry(props: &EntryProps) -> Html {
                 <span>{" (moderator)"}</span>
             }
         </li>
-    )
+    }
 }
 
 #[derive(Clone, PartialEq, Properties)]
@@ -47,7 +47,7 @@ pub fn player_list(props: &ListProps) -> Html {
         })
         .collect::<Html>();
 
-    html!(
+    html! {
         <div>
             <h3 class="px-4 font-semibold text-slate-400">
                 {"Connected players:"}
@@ -56,5 +56,5 @@ pub fn player_list(props: &ListProps) -> Html {
                 {players}
             </ul>
         </div>
-    )
+    }
 }

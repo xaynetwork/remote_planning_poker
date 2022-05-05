@@ -11,7 +11,7 @@ pub struct EntryProps {
 #[function_component(VoteButton)]
 pub fn vote_button(props: &EntryProps) -> Html {
     let onclick = &props.onclick;
-    html!(
+    html! {
         <button
             class={classes!(
                 "m-1", "py-2", "w-12",
@@ -24,7 +24,7 @@ pub fn vote_button(props: &EntryProps) -> Html {
         >
             { props.value }
         </button>
-    )
+    }
 }
 
 #[derive(Clone, PartialEq, Properties)]
@@ -43,15 +43,15 @@ pub fn vote_value_list(props: &ListProps) -> Html {
                 let on_vote_click = props.on_vote_click.clone();
                 Callback::from(move |_| on_vote_click.emit(vote))
             };
-            html!(
+            html! {
                 <div class="m-1">
                     <VoteButton {value} {onclick} />
                 </div>
-            )
+            }
         })
         .collect::<Html>();
 
-    html!(
+    html! {
         <section
             class={classes!(
                 "flex", "flex-wrap", "my-4", "p-4",
@@ -60,5 +60,5 @@ pub fn vote_value_list(props: &ListProps) -> Html {
         >
             {allowed_votes}
         </section>
-    )
+    }
 }

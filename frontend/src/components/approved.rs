@@ -10,7 +10,7 @@ pub struct EntryProps {
 pub fn approved_story(props: &EntryProps) -> Html {
     let avrg = &props.story.votes_avrg();
     let estimation = Vote::get_closest_vote(avrg).value();
-    html!(
+    html! {
         <li class="flex items-center px-2 border-b">
             <h4
                 class={classes!(
@@ -30,7 +30,7 @@ pub fn approved_story(props: &EntryProps) -> Html {
                 {estimation}
             </strong>
         </li>
-    )
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Properties)]
@@ -54,12 +54,12 @@ pub fn approved_story_list(props: &ListProps) -> Html {
         .collect::<Html>();
 
     if !props.stories.is_empty() {
-        html!(
+        html! {
             <ul class="mb-12 bg-white shadow-sm rounded list-none">
                 {stories}
             </ul>
-        )
+        }
     } else {
-        html!()
+        html! {}
     }
 }

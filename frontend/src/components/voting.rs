@@ -24,7 +24,7 @@ pub fn selected_story(props: &Props) -> Html {
                 let current_user_id = props.user_id.clone();
                 let is_revealed = status == StoryStatus::Revealed || user_id == current_user_id;
                 let is_not_revealed = !is_revealed;
-                html!(
+                html! {
                     <li
                         key={user_id.to_string()}
                         class={classes!("m-2", "text-center")}
@@ -49,10 +49,10 @@ pub fn selected_story(props: &Props) -> Html {
                             { player.user.name.clone() }
                         </span>
                     </li>
-                )
+                }
             } else {
-                // TODO: what to do?
-                html!()
+                // TODO: maybe iterate over players instead?
+                html! {}
             }
         })
         .collect::<Html>();
@@ -111,7 +111,7 @@ pub fn selected_story(props: &Props) -> Html {
     let avrg = &props.story.votes_avrg();
     let estimation = Vote::get_closest_vote(avrg).value();
 
-    html!(
+    html! {
         <div class={classes!("mt-2", "mb-4")}>
             <h4 class={classes!("font-bold", "text-2xl", "text-slate-500")}>
                 {&props.story.info.title}
@@ -147,5 +147,5 @@ pub fn selected_story(props: &Props) -> Html {
                 </>
             }
         </div>
-    )
+    }
 }

@@ -14,7 +14,7 @@ pub fn button(props: &Props) -> Html {
     let disabled = props.disabled;
     let onclick = &props.onclick;
     let children = props.children.clone();
-    html!(
+    html! {
         <button
             class={classes!(
                 "bg-blue-500", "hover:bg-blue-400",
@@ -29,5 +29,5 @@ pub fn button(props: &Props) -> Html {
         >
             {children}
         </button>
-    )
+    }
 }
