@@ -1,13 +1,13 @@
 use crate::components::{button::Button, vote_value::VoteValueList};
 use common::{GameAction, Player, PlayerRole, Story, StoryStatus, UserId, Vote};
-use std::collections::HashMap;
+use indexmap::IndexMap;
 use yew::prelude::*;
 
 #[derive(Clone, Debug, PartialEq, Properties)]
 pub struct Props {
     pub story: Story,
     pub user_id: UserId,
-    pub players: HashMap<UserId, Player>,
+    pub players: IndexMap<UserId, Player>,
     pub on_action: Callback<GameAction>,
 }
 

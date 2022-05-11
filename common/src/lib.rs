@@ -1,5 +1,6 @@
+use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, fmt};
+use std::fmt;
 use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -47,19 +48,19 @@ impl fmt::Display for GameId {
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct Game {
     pub id: GameId,
-    pub stories: HashMap<StoryId, Story>,
-    pub players: HashMap<UserId, Player>,
+    pub stories: IndexMap<StoryId, Story>,
+    pub players: IndexMap<UserId, Player>,
 }
 
 impl Game {
     pub fn new(user: User) -> Self {
         let player = Player::new_admin(user);
-        let mut players: HashMap<UserId, Player> = HashMap::new();
+        let mut players = IndexMap::new();
         players.insert(player.user.id, player);
 
         Game {
             id: GameId(Uuid::new_v4()),
-            stories: HashMap::new(),
+            stories: IndexMap::new(),
             players,
         }
     }
@@ -148,7 +149,7 @@ impl Game {
     }
 
     fn add_stories(&mut self, stories: Vec<Story>) {
-        let to_add: HashMap<_, _> = stories.into_iter().map(|s| (s.id, s)).collect();
+        let to_add: IndexMap<_, _> = stories.into_iter().map(|s| (s.id, s)).collect();
         self.stories.extend(to_add);
     }
 
@@ -167,7 +168,7 @@ impl Game {
     }
 
     fn open_story_for_voting(&mut self, story_id: &StoryId) {
-        let stories: HashMap<StoryId, Story> = self
+        let stories: IndexMap<StoryId, Story> = self
             .stories
             .clone()
             .into_iter()
@@ -181,14 +182,14 @@ impl Game {
                     {
                         Story {
                             status: StoryStatus::Voting,
-                            votes: HashMap::new(),
+                            votes: IndexMap::new(),
                             ..story
                         }
                     }
                     // close other stories for voting
                     _ => Story {
                         status: StoryStatus::Init,
-                        votes: HashMap::new(),
+                        votes: IndexMap::new(),
                         ..story
                     },
                 };
@@ -203,7 +204,7 @@ impl Game {
         if let Some(story) = self.stories.get(story_id) {
             let story = Story {
                 status: StoryStatus::Init,
-                votes: HashMap::new(),
+                votes: IndexMap::new(),
                 ..story.clone()
             };
             self.stories.insert(story.id, story);
@@ -271,7 +272,7 @@ pub struct StoryInfo {
 pub struct Story {
     pub id: StoryId,
     pub info: StoryInfo,
-    pub votes: HashMap<UserId, Vote>,
+    pub votes: IndexMap<UserId, Vote>,
     pub status: StoryStatus,
 }
 
@@ -279,7 +280,7 @@ impl Story {
     pub fn new(info: StoryInfo) -> Self {
         Story {
             id: StoryId(Uuid::new_v4()),
-            votes: HashMap::new(),
+            votes: IndexMap::new(),
             status: StoryStatus::Init,
             info,
         }
