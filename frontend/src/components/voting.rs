@@ -1,6 +1,7 @@
 use crate::components::{button::Button, vote_value::VoteValueList};
 use common::{GameAction, Player, PlayerRole, Story, StoryStatus, UserId, Vote};
 use indexmap::IndexMap;
+use web_sys::HtmlInputElement;
 use yew::prelude::*;
 
 #[derive(Clone, Debug, PartialEq, Properties)]
@@ -13,6 +14,7 @@ pub struct Props {
 
 #[function_component(SelectedStory)]
 pub fn selected_story(props: &Props) -> Html {
+    let final_estimate_handle = use_state(|| 0_i32);
     let votes = props
         .story
         .votes
@@ -66,7 +68,8 @@ pub fn selected_story(props: &Props) -> Html {
     let on_accept_round = {
         let story_id = props.story.id.clone();
         let on_action = props.on_action.clone();
-        Callback::from(move |_| on_action.emit(GameAction::ResultsApproved(story_id)))
+        let estimate = Some(Vote::new(*final_estimate_handle).unwrap());
+        Callback::from(move |_| on_action.emit(GameAction::ResultsApproved(story_id, estimate)))
     };
 
     let on_play_again = {
@@ -109,7 +112,45 @@ pub fn selected_story(props: &Props) -> Html {
     };
 
     let avrg = &props.story.votes_avrg();
-    let estimation = Vote::get_closest_vote(avrg).value();
+    let closest = Vote::get_closest_vote(avrg).value();
+
+    {
+        let closest = closest.clone();
+        let final_estimate_handle = final_estimate_handle.clone();
+        use_effect_with_deps(
+            move |closest| {
+                final_estimate_handle.set(*closest);
+                || ()
+            },
+            closest,
+        );
+    };
+
+    let options = Vote::get_allowed_votes()
+        .iter()
+        .map(|vote| {
+            let value = vote.value();
+            html! {
+                <option
+                    key={value}
+                    value={value.to_string()}
+                    selected={ value == *final_estimate_handle }
+                >
+                    {value}
+                </option>
+            }
+        })
+        .collect::<Html>();
+
+    let onchange = {
+        let final_estimate_handle = final_estimate_handle.clone();
+        Callback::from(move |e: Event| {
+            let input: HtmlInputElement = e.target_unchecked_into();
+            let value = input.value();
+            let value: i32 = value.parse().unwrap();
+            final_estimate_handle.set(value);
+        })
+    };
 
     html! {
         <div class={classes!("mt-2", "mb-4")}>
@@ -126,9 +167,17 @@ pub fn selected_story(props: &Props) -> Html {
             if is_admin {
                 <>
                     if can_accept {
-                        <h5 class="m-1 text-xs, text-slate-500">
-                            {format!("Average: {}, Closest estimate: {}", avrg, estimation)}
-                        </h5>
+                        <div class="m-2 flex items-center text-slate-500">
+                            <h5 class="text-sm mr-4">
+                                {format!(
+                                    "Average: {}, Closest: {}, Final: {:?}",
+                                    avrg, closest, *final_estimate_handle
+                                )}
+                            </h5>
+                            <select class="py-1 px-2 text-sm bg-white rounded-sm shadow-sm" {onchange}>
+                                {options}
+                            </select>
+                        </div>
                     }
                     <div class={classes!("list-none", "mt-6", "mb-12", "flex", "flex-wrap")}>
                         <div class="m-1">

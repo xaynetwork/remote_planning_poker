@@ -67,9 +67,14 @@ pub fn backlog_story_entry(props: &EntryProps) -> Html {
             <>
                 <button
                     title="Select to start round"
-                    class={classes!(button_class, "hover:text-green-400")}
+                    class={classes!(
+                        button_class,
+                        "hover:text-green-400",
+                        "flex"
+                    )}
                     onclick={on_select}
                 >
+                    <span class="mr-2">{"Select"}</span>
                     <SelectIcon />
                 </button>
                 <button

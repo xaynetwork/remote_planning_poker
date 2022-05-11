@@ -8,8 +8,15 @@ pub struct EntryProps {
 
 #[function_component(ApprovedStory)]
 pub fn approved_story(props: &EntryProps) -> Html {
-    let avrg = &props.story.votes_avrg();
-    let estimation = Vote::get_closest_vote(avrg).value();
+    let estimation = &props
+        .story
+        .estimate
+        .unwrap_or_else(|| {
+            let avrg = &props.story.votes_avrg();
+            Vote::get_closest_vote(&avrg)
+        })
+        .value();
+
     html! {
         <li class="flex items-center px-2 border-b">
             <h4

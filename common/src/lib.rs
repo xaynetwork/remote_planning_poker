@@ -16,7 +16,7 @@ pub enum GameAction {
     VotingClosed(StoryId),
     VoteCasted(StoryId, Vote),
     VotesRevealed(StoryId),
-    ResultsApproved(StoryId),
+    ResultsApproved(StoryId, Option<Vote>),
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -103,7 +103,9 @@ impl Game {
                     self.close_story_for_voting(&story_id)
                 }
                 GameAction::VotesRevealed(story_id) if is_admin => self.reveal_votes(&story_id),
-                GameAction::ResultsApproved(story_id) if is_admin => self.accept_round(&story_id),
+                GameAction::ResultsApproved(story_id, estimate) if is_admin => {
+                    self.accept_round(&story_id, estimate)
+                }
                 GameAction::VoteCasted(story_id, vote) => {
                     let player_id = player.user.id;
                     self.cast_vote(&story_id, player_id, vote)
@@ -116,7 +118,7 @@ impl Game {
                 | GameAction::CurrentState(_)
                 | GameAction::GameNotFound(_)
                 | GameAction::PlayerJoined(_)
-                | GameAction::ResultsApproved(_)
+                | GameAction::ResultsApproved(_, _)
                 | GameAction::VotingOpened(_)
                 | GameAction::VotingClosed(_)
                 | GameAction::VotesRevealed(_) => (),
@@ -234,11 +236,16 @@ impl Game {
         }
     }
 
-    fn accept_round(&mut self, story_id: &StoryId) {
+    fn accept_round(&mut self, story_id: &StoryId, estimate: Option<Vote>) {
         match self.stories.get(story_id) {
             Some(story) if story.status == StoryStatus::Revealed => {
+                let estimate = estimate.unwrap_or_else(|| {
+                    let avrg = story.votes_avrg();
+                    Vote::get_closest_vote(&avrg)
+                });
                 let mut story = story.clone();
                 story.status = StoryStatus::Approved;
+                story.estimate = Some(estimate);
                 self.stories.insert(story.id, story);
             }
             _ => (),
@@ -272,6 +279,7 @@ pub struct StoryInfo {
 pub struct Story {
     pub id: StoryId,
     pub info: StoryInfo,
+    pub estimate: Option<Vote>,
     pub votes: IndexMap<UserId, Vote>,
     pub status: StoryStatus,
 }
@@ -282,6 +290,7 @@ impl Story {
             id: StoryId(Uuid::new_v4()),
             votes: IndexMap::new(),
             status: StoryStatus::Init,
+            estimate: None,
             info,
         }
     }
