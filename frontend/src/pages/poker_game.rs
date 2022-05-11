@@ -2,7 +2,7 @@ use common::{Game, GameAction, GameId, GameMessage, PlayerRole, StoryStatus, Use
 use std::{ops::Deref, rc::Rc};
 use uuid::Uuid;
 use yew::prelude::*;
-use yew_hooks::{use_web_socket, UseWebSocketReadyState};
+use yew_hooks::{use_location, use_web_socket, UseWebSocketReadyState};
 use yew_router::prelude::*;
 
 use crate::{
@@ -49,9 +49,11 @@ impl Reducible for GameState {
 
 #[function_component(PokerGame)]
 pub fn poker_game(props: &Props) -> Html {
+    let location = use_location();
     let user = use_context::<User>().expect("no user ctx found");
     let state = use_reducer(|| GameState::Loading);
-    let ws = use_web_socket("ws://localhost:3000/api/game".to_string());
+    let ws_url = format!("ws://{}:3000/api/game", &location.hostname);
+    let ws = use_web_socket(ws_url);
 
     let prepare_msg = {
         let user_id = user.id.clone();
