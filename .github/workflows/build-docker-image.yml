@@ -24,7 +24,7 @@ jobs:
           key: rust-build
 
       - name: Install OpenSSL
-        run: apt-get install -y openssl-dev
+        run: apt-get install -y libssl-dev
 
       - name: Install Node.js
         run: |
