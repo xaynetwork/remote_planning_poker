@@ -52,7 +52,8 @@ pub fn poker_game(props: &Props) -> Html {
     let location = use_location();
     let user = use_context::<User>().expect("no user ctx found");
     let state = use_reducer(|| GameState::Loading);
-    let ws_url = format!("ws://{}:3000/api/game", &location.hostname);
+    let url = location.origin.replace("http", "ws");
+    let ws_url = format!("{}/api/game", url);
     let ws = use_web_socket(ws_url);
 
     let prepare_msg = {

@@ -16,6 +16,13 @@ uuid = { version = "1.0.0", features = ["serde", "js", "v4"] }
 wasm-bindgen = "0.2"
 wasm-logger = "0.2.0"
 web-sys = "0.3"
+wee_alloc = "0.4.5"
 yew = "0.19.3"
 yew-hooks = "0.1.54"
 yew-router = "0.16.0"
+
+# [profile.release]
+# codegen-units = 1
+# panic = 'abort'
+# opt-level = 'z'   # z for more aggressive
+# lto = true

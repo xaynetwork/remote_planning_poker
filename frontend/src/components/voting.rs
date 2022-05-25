@@ -169,10 +169,9 @@ pub fn selected_story(props: &Props) -> Html {
                     if can_accept {
                         <div class="m-2 flex items-center text-slate-500">
                             <h5 class="text-sm mr-4">
-                                {format!(
-                                    "Average: {}, Closest: {}, Final: {:?}",
-                                    avrg, closest, *final_estimate_handle
-                                )}
+                                <span>{"Average: "}{avrg}</span>
+                                <span>{"Closest: "}{closest}</span>
+                                <span>{"Final: "}{*final_estimate_handle}</span>
                             </h5>
                             <select class="py-1 px-2 text-sm bg-white rounded-sm shadow-sm" {onchange}>
                                 {options}

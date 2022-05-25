@@ -8,6 +8,7 @@ use axum::{
     routing::get,
     Json, Router,
 };
+use axum_extra::routing::SpaRouter;
 use common::{Game, GameAction, GameId, GameMessage, User};
 use futures::{sink::SinkExt, stream::StreamExt};
 use std::{
@@ -41,8 +42,11 @@ async fn main() {
     let tracing_layer = TraceLayer::new_for_http()
         .make_span_with(DefaultMakeSpan::default().include_headers(false));
 
+    let spa = SpaRouter::new("/assets", "dist");
+
     // Compose the routes
     let app = Router::new()
+        .merge(spa)
         .route("/api/index", get(get_root))
         .route("/api/game", get(ws_handler).post(create_game))
         .layer(tracing_layer)
