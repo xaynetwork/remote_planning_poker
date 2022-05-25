@@ -26,7 +26,7 @@ jobs:
       - name: Install Node.js and OpenSSL
         run: |
           curl -fsSL https://deb.nodesource.com/setup_16.x | bash -
-          apt-get install -y libssl-dev nodejs
+          apt-get install -y libssl-dev nodejs pkg-config
 
       - name: Install dependencies
         run: just install-deps
