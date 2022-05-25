@@ -23,6 +23,14 @@ jobs:
         with:
           key: rust-build
 
+      - name: Install OpenSSL
+        run: apt-get install -y openssl-dev
+
+      - name: Install Node.js
+        run: |
+          curl -fsSL https://deb.nodesource.com/setup_16.x | bash -
+          apt-get install -y nodejs
+
       - name: Install dependencies
         run: just install-deps
 
