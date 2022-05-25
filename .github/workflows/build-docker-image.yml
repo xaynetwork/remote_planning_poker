@@ -23,13 +23,16 @@ jobs:
         with:
           key: rust-build
 
-      - name: build
+      - name: Install dependencies
+        run: just install-deps
+
+      - name: Build artifacts
         run: just build
 
-      - name: 'Tar files'
+      - name: Create archive
         run: tar -cvf estimation.tar target/release/backend frontend/dist
 
-      - name: Upload library artifacts
+      - name: Upload archive
         uses: actions/upload-artifact@v3
         with:
           name: estimation
@@ -57,7 +60,7 @@ jobs:
       - name: Untar files
         run: tar -xvf estimation.tar
 
-      - name: docker build
+      - name: Create docker image
         run: |
           TAG="$(git rev-parse --short HEAD)"
           if [[ "${GITHUB_REF#refs/heads/}" != "" ]]; then
@@ -69,11 +72,11 @@ jobs:
           docker build -t "${IMAGE_NAME}" .
           echo "IMAGE_NAME=${IMAGE_NAME}" >> $GITHUB_ENV
 
-      - name: Login to Docker Hub
-        uses: docker/login-action@v1
-        with:
-          username: "${{ secrets.DOCKERHUB_USERNAME }}"
-          password: "${{ secrets.DOCKERHUB_TOKEN }}"
+      # - name: Login to Docker Hub
+      #   uses: docker/login-action@v1
+      #   with:
+      #     username: "${{ secrets.DOCKERHUB_USERNAME }}"
+      #     password: "${{ secrets.DOCKERHUB_TOKEN }}"
 
-      - name: docker push
-        run: docker push "${IMAGE_NAME}"
+      # - name: docker push
+      #   run: docker push "${IMAGE_NAME}"
