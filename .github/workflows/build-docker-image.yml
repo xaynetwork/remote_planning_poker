@@ -1,6 +1,12 @@
 name: Build
 
-on: [push]
+on:
+  push:
+  workflow_dispatch:
+    inputs:
+      tag:
+        required: true
+        description: "Tag for the new Docker image"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -93,8 +99,6 @@ jobs:
         if: steps.docker-push.outcome == 'success'
         env:
           GHA_TOKEN: ${{ secrets.GHA_TOKEN }}
-          GHA_DEVOPS_REPO: ${{ secrets.GHA_DEVOPS_REPO }}
-          GHA_EVENT_TYPE_DEPLOYMENT: ${{ secrets.GHA_EVENT_TYPE_DEPLOYMENT }}
           GHA_ACTOR: ${{ github.actor }}
         run: |
-          curl -v -XPOST https://api.github.com/repos/${GHA_DEVOPS_REPO}/dispatches -H "Authorization: token ${GHA_TOKEN}" -H "Accept: application/vnd.github.v3+json" -H "Content-Type: application/json" -d "{\"event_type\":\"${GHA_EVENT_TYPE_DEPLOYMENT}\",\"client_payload\":{\"actor\":\"${GHA_ACTOR}\",\"tag\":\"${TAG}\"}}"
+          curl -v -XPOST https://api.github.com/repos/xaynetwork/xayn_infrastructure/dispatches -H "Authorization: token ${GHA_TOKEN}" -H "Accept: application/vnd.github.v3+json" -H "Content-Type: application/json" -d "{\"event_type\":\"remote_poker-deployment\",\"client_payload\":{\"actor\":\"${GHA_ACTOR}\",\"tag\":\"${TAG}\"}}"
