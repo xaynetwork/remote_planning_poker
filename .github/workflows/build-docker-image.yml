@@ -4,11 +4,6 @@ on:
   push:
     branches:
       - main
-  workflow_dispatch:
-    inputs:
-      tag:
-        required: true
-        description: "Tag for the new Docker image"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
