@@ -1,4 +1,4 @@
-use common::{GameAction, Story, StoryInfo};
+use common::{GameAction, Story, StoryId, StoryInfo};
 use web_sys::HtmlInputElement;
 use yew::prelude::*;
 
@@ -7,6 +7,7 @@ use crate::components::form_input::FormInput;
 #[derive(Clone, Debug, PartialEq, Properties)]
 pub struct EntryProps {
     pub story: Story,
+    pub idx: usize,
     pub on_action: Callback<GameAction>,
 }
 
@@ -41,6 +42,18 @@ pub fn backlog_story_entry(props: &EntryProps) -> Html {
     let on_cancel = {
         let state = state.clone();
         Callback::from(move |_| state.set(EntryState::Default))
+    };
+    let on_go_up = {
+        let new_idx = if props.idx > 0 { props.idx - 1 } else { 0 };
+        let story_id = props.story.id.clone();
+        let on_action = props.on_action.clone();
+        Callback::from(move |_| on_action.emit(GameAction::StoryPositionChanged(story_id, new_idx)))
+    };
+    let on_go_down = {
+        let new_idx = props.idx + 1;
+        let story_id = props.story.id.clone();
+        let on_action = props.on_action.clone();
+        Callback::from(move |_| on_action.emit(GameAction::StoryPositionChanged(story_id, new_idx)))
     };
     let onkeypress = {
         let state = state.clone();
@@ -90,6 +103,20 @@ pub fn backlog_story_entry(props: &EntryProps) -> Html {
                     onclick={on_remove_intent}
                 >
                     <RemoveIcon />
+                </button>
+                <button
+                    title="Go up"
+                    class={classes!(button_class, "hover:text-blue-400")}
+                    onclick={on_go_up}
+                >
+                    <GoUpIcon />
+                </button>
+                <button
+                    title="Go down"
+                    class={classes!(button_class, "hover:text-blue-400")}
+                    onclick={on_go_down}
+                >
+                    <GoDownIcon />
                 </button>
             </>
         },
@@ -146,6 +173,7 @@ pub fn backlog_story_entry(props: &EntryProps) -> Html {
 #[derive(Clone, PartialEq, Properties)]
 pub struct ListProps {
     pub stories: Vec<Story>,
+    pub stories_ids: Vec<StoryId>,
     pub on_action: Callback<GameAction>,
 }
 
@@ -159,8 +187,14 @@ pub fn backlog_story_list(props: &ListProps) -> Html {
             let key = story.id.to_string();
             let story = story.clone();
             let on_action = props.on_action.clone();
+            let idx = props
+                .stories_ids
+                .iter()
+                .position(|id| id == &story.id)
+                .unwrap();
+
             html! {
-                <BacklogStoryEntry {key} {story} {on_action} />
+                <BacklogStoryEntry {key} {idx} {story} {on_action} />
             }
         })
         .collect::<Html>();
@@ -219,6 +253,24 @@ pub fn remove_icon() -> Html {
     html! {
         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+        </svg>
+    }
+}
+
+#[function_component(GoUpIcon)]
+pub fn go_up_icon() -> Html {
+    html! {
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7" />
+        </svg>
+    }
+}
+
+#[function_component(GoDownIcon)]
+pub fn go_down_icon() -> Html {
+    html! {
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
         </svg>
     }
 }

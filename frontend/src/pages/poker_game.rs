@@ -1,5 +1,5 @@
-use common::{AppMessage, Game, PlayerRole, StoryStatus, User};
-use std::{ops::Deref, rc::Rc};
+use common::{AppMessage, Game, PlayerRole, Story, StoryStatus, User};
+use std::{cmp::Ordering, ops::Deref, rc::Rc};
 use uuid::Uuid;
 use yew::prelude::*;
 use yew_hooks::UseWebSocketReadyState;
@@ -85,11 +85,36 @@ pub fn poker_game(props: &Props) -> Html {
             <Redirect<Route> to={Route::NotFound}/>
         },
         GameState::Playing(game) => {
-            let approved = game.stories_by_filter(|s| s.status == StoryStatus::Approved);
+            let mut approved = game.stories_by_filter(|s| match s.status {
+                StoryStatus::Approved(_) => true,
+                _ => false,
+            });
+            approved.sort_by(|a, b| {
+                if let StoryStatus::Approved(a_idx) = a.status {
+                    if let StoryStatus::Approved(b_idx) = b.status {
+                        a_idx.cmp(&b_idx)
+                    } else {
+                        Ordering::Equal
+                    }
+                } else {
+                    Ordering::Equal
+                }
+            });
+
             let selected = game.stories_by_filter(|s| {
                 s.status == StoryStatus::Voting || s.status == StoryStatus::Revealed
             });
-            let backlog = game.stories_by_filter(|s| s.status == StoryStatus::Init);
+
+            let backlog = game
+                .stories_ids
+                .iter()
+                .filter_map(|story_id| match game.stories.get(story_id) {
+                    Some(story) if story.status == StoryStatus::Init => Some(story),
+                    _ => None,
+                })
+                .cloned()
+                .collect::<Vec<Story>>();
+
             let players = game.active_players();
             let is_admin = match game.players.get(&user.id) {
                 Some(player) if player.role == PlayerRole::Admin => true,
@@ -137,6 +162,7 @@ pub fn poker_game(props: &Props) -> Html {
                                 <>
                                     <BacklogStoryList
                                         stories={backlog}
+                                        stories_ids={game.stories_ids.clone()}
                                         on_action={conn.send.clone()}
                                     />
                                     <StoryForm on_action={conn.send.clone()} />

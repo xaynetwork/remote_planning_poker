@@ -9,6 +9,7 @@ pub enum GameAction {
     PlayerLeft,
     StoriesAdded(Vec<Story>),
     StoryUpdated(StoryId, StoryInfo),
+    StoryPositionChanged(StoryId, usize),
     StoryRemoved(StoryId),
     VotingOpened(StoryId),
     VotingClosed(StoryId),
@@ -47,6 +48,7 @@ impl fmt::Display for GameId {
 pub struct Game {
     pub id: GameId,
     pub stories: IndexMap<StoryId, Story>,
+    pub stories_ids: Vec<StoryId>,
     pub players: IndexMap<UserId, Player>,
 }
 
@@ -59,6 +61,7 @@ impl Game {
         Game {
             id: GameId(Uuid::new_v4()),
             stories: IndexMap::new(),
+            stories_ids: Vec::new(),
             players,
         }
     }
@@ -88,6 +91,9 @@ impl Game {
                 GameAction::StoriesAdded(stories) if is_admin => self.add_stories(stories),
                 GameAction::StoryUpdated(story_id, story_info) if is_admin => {
                     self.update_story(&story_id, story_info)
+                }
+                GameAction::StoryPositionChanged(story_id, idx) => {
+                    self.change_story_position(&story_id, idx)
                 }
                 GameAction::StoryRemoved(story_id) if is_admin => self.remove_story(&story_id),
                 GameAction::VotingOpened(story_id) if is_admin => {
@@ -144,7 +150,20 @@ impl Game {
 
     fn add_stories(&mut self, stories: Vec<Story>) {
         let to_add: IndexMap<_, _> = stories.into_iter().map(|s| (s.id, s)).collect();
+        let ids_to_add: Vec<StoryId> = to_add.keys().cloned().collect();
+        self.stories_ids.extend(ids_to_add);
         self.stories.extend(to_add);
+    }
+
+    fn change_story_position(&mut self, story_id: &StoryId, new_idx: usize) {
+        if new_idx >= self.stories_ids.len() {
+            return;
+        }
+
+        if let Some(old_idx) = self.stories_ids.iter().position(|x| x == story_id) {
+            let removed = self.stories_ids.remove(old_idx);
+            self.stories_ids.insert(new_idx, removed);
+        }
     }
 
     fn update_story(&mut self, story_id: &StoryId, info: StoryInfo) {
@@ -158,18 +177,21 @@ impl Game {
     }
 
     fn remove_story(&mut self, story_id: &StoryId) {
+        if let Some(idx) = self.stories_ids.iter().position(|x| x == story_id) {
+            self.stories_ids.remove(idx);
+        }
         self.stories.remove(story_id);
     }
 
     fn open_story_for_voting(&mut self, story_id: &StoryId) {
-        let stories: IndexMap<StoryId, Story> = self
+        let stories = self
             .stories
             .clone()
             .into_iter()
             .map(|(id, story)| {
                 let story = match story.status {
                     // do nothing for approved stories
-                    StoryStatus::Approved => story,
+                    StoryStatus::Approved(_) => story,
                     // open story for voting or reopen story (clear votes)
                     StoryStatus::Init | StoryStatus::Voting | StoryStatus::Revealed
                         if story_id == &id =>
@@ -189,7 +211,7 @@ impl Game {
                 };
                 (id, story)
             })
-            .collect();
+            .collect::<IndexMap<StoryId, Story>>();
 
         self.stories = stories;
     }
@@ -229,6 +251,16 @@ impl Game {
     }
 
     fn accept_round(&mut self, story_id: &StoryId, estimate: Option<Vote>) {
+        let accepted_size = self
+            .stories
+            .values()
+            .filter(|story| match story.status {
+                StoryStatus::Approved(_) => true,
+                _ => false,
+            })
+            .collect::<Vec<&Story>>()
+            .len();
+
         match self.stories.get(story_id) {
             Some(story) if story.status == StoryStatus::Revealed => {
                 let estimate = estimate.unwrap_or_else(|| {
@@ -236,7 +268,7 @@ impl Game {
                     Vote::get_closest_vote(&avrg)
                 });
                 let mut story = story.clone();
-                story.status = StoryStatus::Approved;
+                story.status = StoryStatus::Approved(accepted_size);
                 story.estimate = Some(estimate);
                 self.stories.insert(story.id, story);
             }
@@ -259,7 +291,7 @@ pub enum StoryStatus {
     Init,
     Voting,
     Revealed,
-    Approved,
+    Approved(usize),
 }
 
 #[derive(PartialEq, Eq, Clone, Serialize, Deserialize, Debug)]
