@@ -35,7 +35,7 @@ pub fn selected_story(props: &Props) -> Html {
                             class={classes!(
                                 "h-28", "w-20",
                                 "flex", "items-center", "justify-center",
-                                "text-center", "font-light", "text-slate-500",
+                                "text-center", "font-light", "text-slate-500", "text-4xl",
                                 "shadow-md", "rounded-md",
                                 is_not_revealed.then(||Some("bg-slate-300")),
                                 is_revealed.then(||Some("bg-slate-50")),
@@ -47,7 +47,12 @@ pub fn selected_story(props: &Props) -> Html {
                                 </strong>
                             }
                         </div>
-                        <span class={classes!("block", "p-2", "text-xs")}>
+                        <span
+                            class={classes!(
+                                "block", "w-20", "p-2",
+                                "text-xs", "text-slate-500"
+                            )}
+                        >
                             { player.user.name.clone() }
                         </span>
                     </li>
@@ -169,9 +174,18 @@ pub fn selected_story(props: &Props) -> Html {
                     if can_accept {
                         <div class="m-2 flex items-center text-slate-500">
                             <h5 class="text-sm mr-4">
-                                <span>{"Average: "}{avrg}</span>
-                                <span>{"Closest: "}{closest}</span>
-                                <span>{"Final: "}{*final_estimate_handle}</span>
+                                <span class="mr-2">
+                                    {"Average: "}
+                                    <b>{avrg}</b>
+                                </span>
+                                <span class="mr-2">
+                                    {"Closest: "}
+                                    <b>{closest}</b>
+                                </span>
+                                <span class="mr-2">
+                                    {"Final: "}
+                                    <b>{*final_estimate_handle}</b>
+                                </span>
                             </h5>
                             <select class="py-1 px-2 text-sm bg-white rounded-sm shadow-sm" {onchange}>
                                 {options}

@@ -16,15 +16,15 @@ install-deps:
 dev:
   #!/usr/bin/env bash
   set -euxo pipefail
-  {{just_executable()}} dev-backed & \
+  {{just_executable()}} dev-backend & \
   {{just_executable()}} dev-frontend & \
   wait
 
-dev-backed:
+dev-backend:
   cargo watch -w common -w backend -x check -x 'run --bin backend'
 
 dev-frontend:
-  cd frontend; trunk serve
+  cd frontend; trunk serve --public-url /
 
 build:
   {{just_executable()}} build-frontend

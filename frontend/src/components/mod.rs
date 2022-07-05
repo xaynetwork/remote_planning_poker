@@ -1,6 +1,8 @@
 pub mod approved;
 pub mod backlog;
 pub mod button;
+pub mod connection_indicator;
+pub mod connection_provider;
 pub mod form_input;
 pub mod form_textarea;
 pub mod layout;

@@ -5,8 +5,6 @@ use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum GameAction {
-    CurrentState(Game),
-    GameNotFound(GameId),
     PlayerJoined(User),
     PlayerLeft,
     StoriesAdded(Vec<Story>),
@@ -20,10 +18,10 @@ pub enum GameAction {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct GameMessage {
-    pub user_id: UserId,
-    pub game_id: GameId,
-    pub action: GameAction,
+pub enum AppMessage {
+    CurrentState(Game),
+    GameNotFound(GameId),
+    GameMessage(UserId, GameAction),
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Debug)]
@@ -81,16 +79,12 @@ impl Game {
             .collect()
     }
 
-    pub fn reduce(mut self, message: GameMessage) -> Self {
-        if self.id != message.game_id {
-            return self;
-        }
-
-        if let GameAction::PlayerJoined(user) = message.action.clone() {
+    pub fn reduce(mut self, user_id: UserId, action: GameAction) -> Self {
+        if let GameAction::PlayerJoined(user) = action.clone() {
             self.add_player(user);
-        } else if let Some(player) = self.players.get(&message.user_id) {
+        } else if let Some(player) = self.players.get(&user_id) {
             let is_admin = player.role == PlayerRole::Admin;
-            match message.action {
+            match action {
                 GameAction::StoriesAdded(stories) if is_admin => self.add_stories(stories),
                 GameAction::StoryUpdated(story_id, story_info) if is_admin => {
                     self.update_story(&story_id, story_info)
@@ -110,13 +104,11 @@ impl Game {
                     let player_id = player.user.id;
                     self.cast_vote(&story_id, player_id, vote)
                 }
-                GameAction::PlayerLeft => self.remove_player(&message.user_id),
+                GameAction::PlayerLeft => self.remove_player(&user_id),
                 // we don't process the rest
                 GameAction::StoriesAdded(_)
                 | GameAction::StoryUpdated(_, _)
                 | GameAction::StoryRemoved(_)
-                | GameAction::CurrentState(_)
-                | GameAction::GameNotFound(_)
                 | GameAction::PlayerJoined(_)
                 | GameAction::ResultsApproved(_, _)
                 | GameAction::VotingOpened(_)

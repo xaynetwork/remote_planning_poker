@@ -1,10 +1,6 @@
 [[proxy]]
 backend = "http://localhost:3000/api/"
 
-# [[proxy]]
-# backend = "ws://localhost:3000/api/"
-# ws = true
-
 [[hooks]]
 stage = "pre_build"
 command = "sh"
@@ -14,5 +10,4 @@ command_arguments = [
 ]
 
 [build]
-# target = "index.html"
 public_url = "/assets/"
