@@ -5,7 +5,7 @@ use axum::{
     },
     http::StatusCode,
     response::{IntoResponse, Response},
-    routing::{get, post},
+    routing::{delete, get, post},
     Json, Router,
 };
 use axum_extra::routing::SpaRouter;
@@ -38,6 +38,7 @@ async fn main() {
     let spa = SpaRouter::new("/assets", "dist");
     let app = Router::new()
         .merge(spa)
+        .route("/api/clear_state", delete(clear_state))
         .route("/api/game", post(create_game))
         .route("/api/game/:game_id", get(ws_handler))
         .layer(tracing_layer)
@@ -52,6 +53,13 @@ async fn main() {
         .serve(app.into_make_service())
         .await
         .unwrap();
+}
+
+async fn clear_state(Extension(state): Extension<Arc<AppState>>) -> impl IntoResponse {
+    state.games.lock().unwrap().clear();
+    state.channels.write().unwrap().clear();
+
+    StatusCode::NO_CONTENT
 }
 
 async fn create_game(
