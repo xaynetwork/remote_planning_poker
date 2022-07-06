@@ -1,0 +1,13 @@
+[[proxy]]
+backend = "http://localhost:3000/api/"
+
+[[hooks]]
+stage = "pre_build"
+command = "sh"
+command_arguments = [
+  "-c",
+  "npx tailwindcss -c tailwind.config.js -o tailwind.css",
+]
+
+[build]
+public_url = "/assets/"
