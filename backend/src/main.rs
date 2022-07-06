@@ -8,6 +8,7 @@ use axum::{
     routing::{delete, get, post},
     Json, Router,
 };
+use axum_auth::AuthBearer;
 use axum_extra::routing::SpaRouter;
 use common::{AppEvent, Game, GameAction, GameId, User, UserId};
 use futures::{sink::SinkExt, stream::StreamExt};
@@ -55,11 +56,21 @@ async fn main() {
         .unwrap();
 }
 
-async fn clear_state(Extension(state): Extension<Arc<AppState>>) -> impl IntoResponse {
-    state.games.lock().unwrap().clear();
-    state.channels.write().unwrap().clear();
+async fn clear_state(
+    AuthBearer(token): AuthBearer,
+    Extension(state): Extension<Arc<AppState>>,
+) -> impl IntoResponse {
+    let secret = std::env::var("SECRET");
+    match secret {
+        Ok(secret) if secret != token => (StatusCode::UNAUTHORIZED, "Wrong token"),
+        Ok(_) => {
+            state.games.lock().unwrap().clear();
+            state.channels.write().unwrap().clear();
 
-    StatusCode::NO_CONTENT
+            (StatusCode::OK, "State cleared successfully")
+        }
+        Err(_) => (StatusCode::INTERNAL_SERVER_ERROR, "Secret not set"),
+    }
 }
 
 async fn create_game(

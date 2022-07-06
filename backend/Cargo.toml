@@ -6,6 +6,7 @@ license = "Apache-2.0"
 
 [dependencies]
 axum = { version = "0.5.4", features = ["ws", "headers"] }
+axum-auth = "0.2.0"
 axum-extra = { version = "0.3.1", features = ["spa"] }
 common = { path = "../common" }
 futures = "0.3.21"
