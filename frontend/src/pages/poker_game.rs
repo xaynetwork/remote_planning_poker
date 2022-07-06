@@ -1,5 +1,5 @@
-use common::{AppEvent, Game, PlayerRole, Story, StoryStatus, User};
-use std::{cmp::Ordering, ops::Deref, rc::Rc};
+use common::{AppEvent, Game, PlayerRole, User};
+use std::{ops::Deref, rc::Rc};
 use uuid::Uuid;
 use yew::prelude::*;
 use yew_hooks::UseWebSocketReadyState;
@@ -7,9 +7,9 @@ use yew_router::prelude::*;
 
 use crate::{
     components::{
-        approved::ApprovedStoryList, backlog::BacklogStoryList,
-        connection_indicator::ConnectionIndicator, connection_provider::use_game_connection,
-        players::PlayerList, story_form::StoryForm, voting::SelectedStory,
+        backlog_stories::BacklogStories, connection_indicator::ConnectionIndicator,
+        connection_provider::use_game_connection, estimated_stories::EstimatedStories,
+        players::Players, selected_story_entry::SelectedStoryEntry, story_form::StoryForm,
     },
     Route,
 };
@@ -85,36 +85,6 @@ pub fn poker_game(props: &Props) -> Html {
             <Redirect<Route> to={Route::NotFound}/>
         },
         GameState::Playing(game) => {
-            let mut approved = game.stories_by_filter(|s| match s.status {
-                StoryStatus::Approved(_) => true,
-                _ => false,
-            });
-            approved.sort_by(|a, b| {
-                if let StoryStatus::Approved(a_idx) = a.status {
-                    if let StoryStatus::Approved(b_idx) = b.status {
-                        a_idx.cmp(&b_idx)
-                    } else {
-                        Ordering::Equal
-                    }
-                } else {
-                    Ordering::Equal
-                }
-            });
-
-            let selected = game.stories_by_filter(|s| {
-                s.status == StoryStatus::Voting || s.status == StoryStatus::Revealed
-            });
-
-            let backlog = game
-                .stories_ids
-                .iter()
-                .filter_map(|story_id| match game.stories.get(story_id) {
-                    Some(story) if story.status == StoryStatus::Init => Some(story),
-                    _ => None,
-                })
-                .cloned()
-                .collect::<Vec<Story>>();
-
             let players = game.active_players();
             let is_admin = match game.players.get(&user.id) {
                 Some(player) if player.role == PlayerRole::Admin => true,
@@ -133,16 +103,18 @@ pub fn poker_game(props: &Props) -> Html {
                     <div class="flex max-w-7xl mx-auto">
                         <section class="w-2/3 p-4">
 
-                            <ApprovedStoryList stories={approved} />
+                            <EstimatedStories
+                                stories={game.estimated_stories.clone()}
+                            />
 
                             {
-                                if let Some(story) = selected.first() {
+                                if let Some(story) = &game.selected_story {
                                     let key = story.id.to_string();
                                     let story = story.clone();
                                     let user_id = user.id.clone();
                                     let players = game.players.clone();
                                     html! {
-                                        <SelectedStory
+                                        <SelectedStoryEntry
                                             {key} {story} {user_id} {players}
                                             on_action={conn.send.clone()}
                                         />
@@ -160,9 +132,8 @@ pub fn poker_game(props: &Props) -> Html {
 
                             if is_admin {
                                 <>
-                                    <BacklogStoryList
-                                        stories={backlog}
-                                        stories_ids={game.stories_ids.clone()}
+                                    <BacklogStories
+                                        stories={game.backlog_stories.clone()}
                                         on_action={conn.send.clone()}
                                     />
                                     <StoryForm on_action={conn.send.clone()} />
@@ -172,7 +143,7 @@ pub fn poker_game(props: &Props) -> Html {
                         </section>
                         <aside class="w-1/3 p-4">
 
-                            <PlayerList {players} />
+                            <Players {players} />
 
                         </aside>
                     </div>

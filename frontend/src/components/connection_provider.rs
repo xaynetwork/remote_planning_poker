@@ -29,7 +29,7 @@ pub fn use_game_connection(game_id: &Uuid, user: &User) -> Connection {
     let ws = use_web_socket_with_options(
         ws_url.clone(),
         UseWebSocketOptions {
-            reconnect_limit: Some(0),
+            reconnect_limit: Some(1000),
             ..Default::default()
         },
     );

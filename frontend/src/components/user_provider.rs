@@ -8,12 +8,12 @@ use crate::components::login::Login;
 const STORAGE_KEY: &str = "yew.user.self";
 
 #[derive(Properties, PartialEq)]
-pub struct UserProviderProps {
+pub struct Props {
     pub children: Children,
 }
 
 #[function_component(UserProvider)]
-pub fn user_provider(props: &UserProviderProps) -> Html {
+pub fn user_provider(props: &Props) -> Html {
     let user = use_state(|| LocalStorage::get(STORAGE_KEY).ok() as Option<User>);
 
     {

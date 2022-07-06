@@ -1,61 +1,39 @@
-use crate::components::{button::Button, vote_value::VoteValueList};
-use common::{GameAction, Player, PlayerRole, Story, StoryStatus, UserId, Vote};
+use common::{GameAction, Player, PlayerRole, SelectedStory, UserId, Vote};
 use indexmap::IndexMap;
 use web_sys::HtmlInputElement;
 use yew::prelude::*;
 
+use crate::components::{
+    allowed_votes::AllowedVotes, button::Button, casted_vote_entry::CastedVoteEntry,
+};
+
 #[derive(Clone, Debug, PartialEq, Properties)]
 pub struct Props {
-    pub story: Story,
+    pub story: SelectedStory,
     pub user_id: UserId,
     pub players: IndexMap<UserId, Player>,
     pub on_action: Callback<GameAction>,
 }
 
-#[function_component(SelectedStory)]
-pub fn selected_story(props: &Props) -> Html {
+#[function_component(SelectedStoryEntry)]
+pub fn selected_story_entry(props: &Props) -> Html {
     let final_estimate_handle = use_state(|| 0_i32);
     let votes = props
         .story
         .votes
-        .clone()
-        .into_iter()
+        .iter()
         .map(|(user_id, vote)| {
-            if let Some(player) = props.players.get(&user_id) {
-                let status = props.story.status.clone();
-                let current_user_id = props.user_id.clone();
-                let is_revealed = status == StoryStatus::Revealed || user_id == current_user_id;
-                let is_not_revealed = !is_revealed;
+            if let Some(player) = props.players.get(user_id) {
+                let player = player.clone();
+                let vote = vote.clone();
+                let is_revealed = props.story.votes_revealed || user_id == &props.user_id;
                 html! {
-                    <li
+                    <CastedVoteEntry
                         key={user_id.to_string()}
-                        class={classes!("m-2", "text-center")}
-                    >
-                        <div
-                            class={classes!(
-                                "h-28", "w-20",
-                                "flex", "items-center", "justify-center",
-                                "text-center", "font-light", "text-slate-500", "text-4xl",
-                                "shadow-md", "rounded-md",
-                                is_not_revealed.then(||Some("bg-slate-300")),
-                                is_revealed.then(||Some("bg-slate-50")),
-                            )}
-                        >
-                            if is_revealed {
-                                <strong class={classes!("block")}>
-                                    { vote.value() }
-                                </strong>
-                            }
-                        </div>
-                        <span
-                            class={classes!(
-                                "block", "w-20", "p-2",
-                                "text-xs", "text-slate-500"
-                            )}
-                        >
-                            { player.user.name.clone() }
-                        </span>
-                    </li>
+                        {is_revealed}
+                        {player}
+                        {vote}
+                    />
                 }
             } else {
                 // TODO: maybe iterate over players instead?
@@ -65,34 +43,29 @@ pub fn selected_story(props: &Props) -> Html {
         .collect::<Html>();
 
     let on_vote_click = {
-        let story_id = props.story.id.clone();
         let on_action = props.on_action.clone();
-        Callback::from(move |vote| on_action.emit(GameAction::VoteCasted(story_id, vote)))
+        Callback::from(move |vote| on_action.emit(GameAction::VoteCasted(vote)))
     };
 
     let on_accept_round = {
-        let story_id = props.story.id.clone();
         let on_action = props.on_action.clone();
         let estimate = Some(Vote::new(*final_estimate_handle).unwrap());
-        Callback::from(move |_| on_action.emit(GameAction::ResultsApproved(story_id, estimate)))
+        Callback::from(move |_| on_action.emit(GameAction::ResultsApproved(estimate)))
     };
 
     let on_play_again = {
-        let story_id = props.story.id.clone();
         let on_action = props.on_action.clone();
-        Callback::from(move |_| on_action.emit(GameAction::VotingOpened(story_id)))
+        Callback::from(move |_| on_action.emit(GameAction::VotesCleared))
     };
 
     let on_reveal_cards = {
-        let story_id = props.story.id.clone();
         let on_action = props.on_action.clone();
-        Callback::from(move |_| on_action.emit(GameAction::VotesRevealed(story_id)))
+        Callback::from(move |_| on_action.emit(GameAction::VotesRevealed))
     };
 
     let on_cancel_round = {
-        let story_id = props.story.id.clone();
         let on_action = props.on_action.clone();
-        Callback::from(move |_| on_action.emit(GameAction::VotingClosed(story_id)))
+        Callback::from(move |_| on_action.emit(GameAction::VotingClosed))
     };
 
     let is_admin = match props.players.get(&props.user_id) {
@@ -100,22 +73,9 @@ pub fn selected_story(props: &Props) -> Html {
         _ => false,
     };
 
-    let can_accept = match props.story.status {
-        StoryStatus::Revealed => true,
-        _ => false,
-    };
-
-    let can_play_again = match props.story.status {
-        StoryStatus::Revealed => true,
-        StoryStatus::Voting if !props.story.votes.is_empty() => true,
-        _ => false,
-    };
-
-    let can_reveal = match props.story.status {
-        StoryStatus::Voting if !props.story.votes.is_empty() => true,
-        _ => false,
-    };
-
+    let can_accept = props.story.can_accept();
+    let can_play_again = props.story.can_play_again();
+    let can_reveal = props.story.can_reveal();
     let avrg = &props.story.votes_avrg();
     let closest = Vote::get_closest_vote(avrg).value();
 
@@ -167,7 +127,7 @@ pub fn selected_story(props: &Props) -> Html {
                 { votes }
             </ul>
 
-            <VoteValueList {on_vote_click} />
+            <AllowedVotes {on_vote_click} />
 
             if is_admin {
                 <>
