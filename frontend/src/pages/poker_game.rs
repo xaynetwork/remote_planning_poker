@@ -1,4 +1,4 @@
-use common::{AppMessage, Game, PlayerRole, Story, StoryStatus, User};
+use common::{AppEvent, Game, PlayerRole, Story, StoryStatus, User};
 use std::{cmp::Ordering, ops::Deref, rc::Rc};
 use uuid::Uuid;
 use yew::prelude::*;
@@ -27,19 +27,19 @@ enum GameState {
 
 impl Reducible for GameState {
     /// Reducer Action Type
-    type Action = AppMessage;
+    type Action = AppEvent;
 
     /// Reducer Function
     fn reduce(self: Rc<Self>, message: Self::Action) -> Rc<Self> {
         match self.deref() {
             GameState::Loading => match message {
-                AppMessage::CurrentState(game) => GameState::Playing(game),
-                AppMessage::GameNotFound(_) => GameState::NotFound,
+                AppEvent::CurrentState(game) => GameState::Playing(game),
+                AppEvent::GameNotFound(_) => GameState::NotFound,
                 // TODO: this shouldn't happen, so figure out how to handle it
                 _ => GameState::Loading,
             },
             GameState::Playing(game) => match message {
-                AppMessage::GameMessage(user_id, action) => {
+                AppEvent::GameMessage(user_id, action) => {
                     let game = game.clone().reduce(user_id, action);
                     GameState::Playing(game)
                 }

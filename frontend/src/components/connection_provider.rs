@@ -1,4 +1,4 @@
-use common::{AppMessage, GameAction, GameId, User};
+use common::{AppEvent, GameAction, GameId, User};
 use gloo_net::http::Request;
 use uuid::Uuid;
 use yew::prelude::*;
@@ -38,7 +38,7 @@ pub fn use_game_connection(game_id: &Uuid, user: &User) -> Connection {
         let ws = ws.clone();
         let user_id = user.id.clone();
         move |action: GameAction| {
-            let msg = AppMessage::GameMessage(user_id, action);
+            let msg = AppEvent::GameMessage(user_id, action);
             let msg = serde_json::to_string(&msg).unwrap();
             ws.send(msg);
         }
