@@ -166,7 +166,6 @@ pub fn poker_game(props: &Props) -> Html {
                                         on_action={conn.send.clone()}
                                     />
                                     <StoryForm on_action={conn.send.clone()} />
-                                    <pre class="my-8">{STORIES_TO_COPY}</pre>
                                 </>
                             }
 
@@ -182,9 +181,3 @@ pub fn poker_game(props: &Props) -> Html {
         }
     }
 }
-
-const STORIES_TO_COPY: &str = "TY-2588 Build exploration stack
-TY-2731 Use semantic filtering across stacks
-TY-2802 improve error handling for invalid engine state
-TY-2749 handle available sources event
-TY-2756 serialize exploration stack data";
