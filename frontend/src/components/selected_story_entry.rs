@@ -19,25 +19,17 @@ pub struct Props {
 pub fn selected_story_entry(props: &Props) -> Html {
     let final_estimate_handle = use_state(|| 0_i32);
     let votes = props
-        .story
-        .votes
-        .iter()
-        .map(|(user_id, vote)| {
-            if let Some(player) = props.players.get(user_id) {
-                let player = player.clone();
-                let vote = vote.clone();
-                let is_revealed = props.story.votes_revealed || user_id == &props.user_id;
-                html! {
-                    <CastedVoteEntry
-                        key={user_id.to_string()}
-                        {is_revealed}
-                        {player}
-                        {vote}
-                    />
-                }
-            } else {
-                // TODO: maybe iterate over players instead?
-                html! {}
+        .players
+        .values()
+        .filter(|player| player.active)
+        .map(|player| {
+            let key = player.user.id.to_string();
+            let vote = props.story.votes.get(&player.user.id).cloned();
+            let is_revealed =
+                (props.story.votes_revealed || props.user_id == player.user.id) && vote.is_some();
+            let player = player.clone();
+            html! {
+                <CastedVoteEntry {key} {player} {is_revealed} {vote} />
             }
         })
         .collect::<Html>();
