@@ -1,4 +1,4 @@
-use common::{GameAction, Story, StoryInfo};
+use common::{BacklogStory, GameAction, StoryInfo};
 use web_sys::HtmlInputElement;
 use yew::prelude::*;
 
@@ -37,7 +37,7 @@ pub fn story_form(props: &Props) -> Html {
             let stories = story_titles
                 .iter()
                 .map(|title| {
-                    Story::new(StoryInfo {
+                    BacklogStory::new(StoryInfo {
                         title: title.clone(),
                     })
                 })
