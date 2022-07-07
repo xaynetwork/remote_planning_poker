@@ -7,15 +7,16 @@ use uuid::Uuid;
 pub enum GameAction {
     PlayerJoined(User),
     PlayerLeft,
-    StoriesAdded(Vec<Story>),
+    StoriesAdded(Vec<BacklogStory>),
     StoryUpdated(StoryId, StoryInfo),
     StoryPositionChanged(StoryId, usize),
     StoryRemoved(StoryId),
     VotingOpened(StoryId),
-    VotingClosed(StoryId),
-    VoteCasted(StoryId, Vote),
-    VotesRevealed(StoryId),
-    ResultsApproved(StoryId, Option<Vote>),
+    VotingClosed,
+    VoteCasted(Vote),
+    VotesRevealed,
+    VotesCleared,
+    ResultsApproved(Option<Vote>),
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -47,13 +48,10 @@ impl fmt::Display for GameId {
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct Game {
     pub id: GameId,
-    pub stories: IndexMap<StoryId, Story>,
-    pub stories_ids: Vec<StoryId>,
     pub players: IndexMap<UserId, Player>,
-    // TODO: switch to this when refactoring to state pattern
-    // pub backlog: Vec<BacklogStory>,
-    // pub selected_story: Option<SelectedStory>,
-    // pub estimated: Vec<EstimatedStory>,
+    pub backlog_stories: Vec<BacklogStory>,
+    pub selected_story: Option<SelectedStory>,
+    pub estimated_stories: Vec<EstimatedStory>,
 }
 
 impl Game {
@@ -64,18 +62,11 @@ impl Game {
 
         Game {
             id: GameId(Uuid::new_v4()),
-            stories: IndexMap::new(),
-            stories_ids: Vec::new(),
+            backlog_stories: Vec::new(),
+            selected_story: None,
+            estimated_stories: Vec::new(),
             players,
         }
-    }
-
-    pub fn stories_by_filter(&self, filter: fn(&Story) -> bool) -> Vec<Story> {
-        self.stories
-            .iter()
-            .filter(|(_, story)| filter(story))
-            .map(|(_, story)| story.clone())
-            .collect()
     }
 
     pub fn active_players(&self) -> Vec<Player> {
@@ -94,192 +85,130 @@ impl Game {
             match action {
                 GameAction::StoriesAdded(stories) if is_admin => self.add_stories(stories),
                 GameAction::StoryUpdated(story_id, story_info) if is_admin => {
-                    self.update_story(&story_id, story_info)
+                    self.update_story(story_id, story_info)
                 }
                 GameAction::StoryPositionChanged(story_id, idx) => {
-                    self.change_story_position(&story_id, idx)
+                    self.change_story_position(story_id, idx)
                 }
-                GameAction::StoryRemoved(story_id) if is_admin => self.remove_story(&story_id),
+                GameAction::StoryRemoved(story_id) if is_admin => self.remove_story(story_id),
                 GameAction::VotingOpened(story_id) if is_admin => {
-                    self.open_story_for_voting(&story_id)
+                    self.open_story_for_voting(story_id)
                 }
-                GameAction::VotingClosed(story_id) if is_admin => {
-                    self.close_story_for_voting(&story_id)
-                }
-                GameAction::VotesRevealed(story_id) if is_admin => self.reveal_votes(&story_id),
-                GameAction::ResultsApproved(story_id, estimate) if is_admin => {
-                    self.accept_round(&story_id, estimate)
-                }
-                GameAction::VoteCasted(story_id, vote) => {
-                    let player_id = player.user.id;
-                    self.cast_vote(&story_id, player_id, vote)
-                }
+                GameAction::VotingClosed if is_admin => self.close_story_for_voting(),
+                GameAction::VotesRevealed if is_admin => self.reveal_votes(),
+                GameAction::VotesCleared if is_admin => self.clear_votes(),
+                GameAction::ResultsApproved(estimate) if is_admin => self.accept_round(estimate),
+                GameAction::VoteCasted(vote) => self.cast_vote(user_id, vote),
                 GameAction::PlayerLeft => self.remove_player(&user_id),
                 // we don't process the rest
                 GameAction::StoriesAdded(_)
                 | GameAction::StoryUpdated(_, _)
                 | GameAction::StoryRemoved(_)
                 | GameAction::PlayerJoined(_)
-                | GameAction::ResultsApproved(_, _)
+                | GameAction::ResultsApproved(_)
                 | GameAction::VotingOpened(_)
-                | GameAction::VotingClosed(_)
-                | GameAction::VotesRevealed(_) => (),
+                | GameAction::VotingClosed
+                | GameAction::VotesCleared
+                | GameAction::VotesRevealed => (),
             };
         }
         self
     }
 
     fn add_player(&mut self, user: User) {
-        let player = match self.players.get(&user.id) {
-            Some(player) => Player {
-                active: true,
-                ..(*player).clone()
-            },
-            None => Player::new(user, PlayerRole::Player),
-        };
-        self.players.insert(player.user.id, player);
+        self.players
+            .entry(user.id)
+            .or_insert_with(|| Player::new(user, PlayerRole::Player))
+            .active = true
     }
 
     fn remove_player(&mut self, user_id: &UserId) {
-        if let Some(player) = self.players.get(user_id) {
-            let player = Player {
-                active: false,
-                ..(*player).clone()
-            };
-            self.players.insert(player.user.id, player);
-        } else {
-            // user didn't registered in the game
+        if let Some(player) = self.players.get_mut(user_id) {
+            player.active = false;
         }
     }
 
-    fn add_stories(&mut self, stories: Vec<Story>) {
-        let stories = stories
-            .into_iter()
-            .map(|s| (s.id, s))
-            .collect::<IndexMap<StoryId, Story>>();
-        let stories_ids: Vec<StoryId> = stories.keys().cloned().collect();
-
-        self.stories_ids.extend(stories_ids);
-        self.stories.extend(stories);
+    fn add_stories(&mut self, stories: Vec<BacklogStory>) {
+        self.backlog_stories.extend(stories);
+        // TODO: filter our duplicates???
+        self.backlog_stories.dedup_by(|a, b| a.id == b.id);
     }
 
-    fn change_story_position(&mut self, story_id: &StoryId, new_idx: usize) {
-        if new_idx >= self.stories_ids.len() {
+    fn change_story_position(&mut self, story_id: StoryId, new_idx: usize) {
+        if new_idx >= self.backlog_stories.len() {
             return;
         }
 
-        if let Some(old_idx) = self.stories_ids.iter().position(|x| x == story_id) {
-            // TODO: this is unsafe, is there a better way?
-            let removed = self.stories_ids.remove(old_idx);
-            self.stories_ids.insert(new_idx, removed);
+        if let Some(idx) = self.backlog_stories.iter().position(|s| s.id == story_id) {
+            let removed = self.backlog_stories.remove(idx);
+            self.backlog_stories.insert(new_idx, removed);
         }
     }
 
-    fn update_story(&mut self, story_id: &StoryId, info: StoryInfo) {
-        if let Some(story) = self.stories.get(story_id) {
-            let story = Story {
-                info,
-                ..story.clone()
-            };
-            self.stories.insert(story.id, story);
+    fn update_story(&mut self, story_id: StoryId, info: StoryInfo) {
+        if let Some(idx) = self.backlog_stories.iter().position(|s| s.id == story_id) {
+            let story = self.backlog_stories.get_mut(idx).unwrap();
+            story.info = info;
         }
     }
 
-    fn remove_story(&mut self, story_id: &StoryId) {
-        if let Some(idx) = self.stories_ids.iter().position(|x| x == story_id) {
-            self.stories_ids.remove(idx);
-        }
-        self.stories.remove(story_id);
+    fn remove_story(&mut self, story_id: StoryId) {
+        self.backlog_stories.retain(|s| s.id != story_id);
     }
 
-    fn open_story_for_voting(&mut self, story_id: &StoryId) {
-        let stories = self
-            .stories
-            .iter()
-            .map(|(id, story)| {
-                let story = story.clone();
-                let story = match story.status {
-                    // do nothing for approved stories
-                    StoryStatus::Approved(_) => story,
-                    // open story for voting or reopen story (clear votes)
-                    StoryStatus::Init | StoryStatus::Voting | StoryStatus::Revealed
-                        if story_id == id =>
-                    {
-                        Story {
-                            status: StoryStatus::Voting,
-                            votes: IndexMap::new(),
-                            ..story
-                        }
-                    }
-                    // close other stories for voting
-                    _ => Story {
-                        status: StoryStatus::Init,
-                        votes: IndexMap::new(),
-                        ..story
-                    },
-                };
-                (*id, story)
-            })
-            .collect::<IndexMap<StoryId, Story>>();
+    fn open_story_for_voting(&mut self, story_id: StoryId) {
+        // if there was a story already open for voting add it back to backlog
+        self.close_story_for_voting();
 
-        self.stories = stories;
-    }
-
-    fn close_story_for_voting(&mut self, story_id: &StoryId) {
-        if let Some(story) = self.stories.get(story_id) {
-            let story = Story {
-                status: StoryStatus::Init,
-                votes: IndexMap::new(),
-                ..story.clone()
-            };
-            self.stories.insert(story.id, story);
+        if let Some(idx) = self.backlog_stories.iter().position(|s| s.id == story_id) {
+            let story = self.backlog_stories.remove(idx);
+            let story = story.select_for_estimation();
+            self.selected_story = Some(story);
         }
     }
 
-    fn cast_vote(&mut self, story_id: &StoryId, player_id: UserId, vote: Vote) {
-        match self.stories.get(story_id) {
-            Some(story) if story.status == StoryStatus::Voting => {
-                let mut story = story.clone();
+    fn close_story_for_voting(&mut self) {
+        if let Some(story) = &self.selected_story {
+            let story = story.move_to_backlog();
+            self.backlog_stories.insert(0, story);
+            self.selected_story = None;
+        }
+    }
 
-                story.votes.insert(player_id, vote);
-                self.stories.insert(story.id, story);
+    fn cast_vote(&mut self, player_id: UserId, vote: Vote) {
+        if let Some(mut story) = self.selected_story.clone() {
+            story.add_vote(player_id, vote);
+            self.selected_story = Some(story);
+        }
+    }
+
+    fn reveal_votes(&mut self) {
+        match self.selected_story.clone() {
+            Some(mut story) if !story.votes_revealed && !story.votes.is_empty() => {
+                story.reveal_votes();
+                self.selected_story = Some(story);
             }
             _ => (),
         }
     }
 
-    fn reveal_votes(&mut self, story_id: &StoryId) {
-        match self.stories.get(story_id) {
-            Some(story) if story.status == StoryStatus::Voting && !story.votes.is_empty() => {
-                let mut story = story.clone();
-                story.status = StoryStatus::Revealed;
-                self.stories.insert(story.id, story);
-            }
-            _ => (),
+    fn clear_votes(&mut self) {
+        if let Some(mut story) = self.selected_story.clone() {
+            story.clear_votes();
+            self.selected_story = Some(story);
         }
     }
 
-    fn accept_round(&mut self, story_id: &StoryId, estimate: Option<Vote>) {
-        let accepted_size = self
-            .stories
-            .values()
-            .filter(|story| match story.status {
-                StoryStatus::Approved(_) => true,
-                _ => false,
-            })
-            .collect::<Vec<&Story>>()
-            .len();
-
-        match self.stories.get(story_id) {
-            Some(story) if story.status == StoryStatus::Revealed => {
+    fn accept_round(&mut self, estimate: Option<Vote>) {
+        match &self.selected_story {
+            Some(story) if story.votes_revealed && !story.votes.is_empty() => {
                 let estimate = estimate.unwrap_or_else(|| {
                     let avrg = story.votes_avrg();
                     Vote::get_closest_vote(&avrg)
                 });
-                let mut story = story.clone();
-                story.status = StoryStatus::Approved(accepted_size);
-                story.estimate = Some(estimate);
-                self.stories.insert(story.id, story);
+                let story = story.accept_with_estimate(estimate);
+                self.selected_story = None;
+                self.estimated_stories.push(story);
             }
             _ => (),
         }
@@ -296,36 +225,82 @@ impl fmt::Display for StoryId {
 }
 
 #[derive(PartialEq, Eq, Clone, Serialize, Deserialize, Debug)]
-pub enum StoryStatus {
-    Init,
-    Voting,
-    Revealed,
-    Approved(usize),
-}
-
-#[derive(PartialEq, Eq, Clone, Serialize, Deserialize, Debug)]
 pub struct StoryInfo {
     pub title: String,
 }
 
-// TODO: rewrite this using state pattern with BacklogStory -> SelectedStory -> EstimatedStory
+/// Story that is waiting in the backlog to be selected for estimation.
 #[derive(PartialEq, Eq, Clone, Serialize, Deserialize, Debug)]
-pub struct Story {
+pub struct BacklogStory {
     pub id: StoryId,
     pub info: StoryInfo,
-    pub estimate: Option<Vote>,
-    pub votes: IndexMap<UserId, Vote>,
-    pub status: StoryStatus,
 }
 
-impl Story {
+impl BacklogStory {
     pub fn new(info: StoryInfo) -> Self {
-        Story {
+        BacklogStory {
             id: StoryId(Uuid::new_v4()),
-            votes: IndexMap::new(),
-            status: StoryStatus::Init,
-            estimate: None,
             info,
+        }
+    }
+
+    pub fn select_for_estimation(&self) -> SelectedStory {
+        SelectedStory {
+            id: self.id,
+            info: self.info.clone(),
+            votes: IndexMap::new(),
+            votes_revealed: false,
+        }
+    }
+}
+
+/// Story that is selected for estimation.
+#[derive(PartialEq, Eq, Clone, Serialize, Deserialize, Debug)]
+pub struct SelectedStory {
+    pub id: StoryId,
+    pub info: StoryInfo,
+    pub votes: IndexMap<UserId, Vote>,
+    pub votes_revealed: bool,
+}
+
+impl SelectedStory {
+    pub fn can_accept(&self) -> bool {
+        self.votes_revealed && !self.votes.is_empty()
+    }
+
+    pub fn can_play_again(&self) -> bool {
+        !self.votes.is_empty()
+    }
+
+    pub fn can_reveal(&self) -> bool {
+        !self.votes_revealed && !self.votes.is_empty()
+    }
+
+    pub fn add_vote(&mut self, player_id: UserId, vote: Vote) {
+        self.votes.insert(player_id, vote);
+    }
+
+    pub fn reveal_votes(&mut self) {
+        self.votes_revealed = true;
+    }
+
+    pub fn clear_votes(&mut self) {
+        self.votes_revealed = false;
+        self.votes.clear();
+    }
+
+    pub fn accept_with_estimate(&self, estimate: Vote) -> EstimatedStory {
+        EstimatedStory {
+            id: self.id,
+            info: self.info.clone(),
+            estimate,
+        }
+    }
+
+    pub fn move_to_backlog(&self) -> BacklogStory {
+        BacklogStory {
+            id: self.id,
+            info: self.info.clone(),
         }
     }
 
@@ -337,6 +312,14 @@ impl Story {
             val as f32 / self.votes.len() as f32
         }
     }
+}
+
+/// Story that is estimated.
+#[derive(PartialEq, Eq, Clone, Serialize, Deserialize, Debug)]
+pub struct EstimatedStory {
+    pub id: StoryId,
+    pub info: StoryInfo,
+    pub estimate: Vote,
 }
 
 #[derive(PartialEq, Eq, Clone, Copy, Serialize, Deserialize, Debug)]
