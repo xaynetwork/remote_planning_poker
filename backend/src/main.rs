@@ -115,7 +115,7 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>, game_id: GameId)
         // TODO: maybe do some logging here for None, Err, other Message cases
         while let Some(Ok(Message::Text(data))) = ws_receiver.next().await {
             if let AppEvent::GameMessage(user_id, action) = serde_json::from_str(&data).unwrap() {
-                if let GameAction::PlayerJoined(user) = action.clone() {
+                if let GameAction::PlayerJoined(user) = &action {
                     player_id = Some(user.id);
                     tracing::info!("player_id set to: {:?}", user.id);
                 }
@@ -151,8 +151,8 @@ async fn update_state_on_message(
     action: GameAction,
 ) {
     let mut games = state.games.lock().await;
-    if let Some(game) = games.get(&game_id) {
-        let game = (*game).clone().reduce(user_id, action);
+    if let Some(game) = games.remove(&game_id) {
+        let game = game.reduce(user_id, action);
         games.insert(game.id, game);
     } else {
         tracing::warn!("trying to update game that doesn't exists");
