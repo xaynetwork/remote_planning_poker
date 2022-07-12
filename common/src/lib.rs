@@ -26,22 +26,12 @@ pub enum AppEvent {
     GameMessage(UserId, GameAction),
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Debug, derive_more::Display)]
 pub struct GameId(Uuid);
 
 impl GameId {
     pub fn new(id: Uuid) -> Self {
         Self(id)
-    }
-
-    pub fn to_uuid(&self) -> Uuid {
-        self.0
-    }
-}
-
-impl fmt::Display for GameId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0)
     }
 }
 
@@ -49,36 +39,35 @@ impl fmt::Display for GameId {
 pub struct Game {
     pub id: GameId,
     pub players: IndexMap<UserId, Player>,
-    pub backlog_stories: Vec<BacklogStory>,
+    pub backlog_stories: IndexMap<StoryId, BacklogStory>,
+    pub estimated_stories: IndexMap<StoryId, EstimatedStory>,
     pub selected_story: Option<SelectedStory>,
-    pub estimated_stories: Vec<EstimatedStory>,
 }
 
 impl Game {
     pub fn new(user: User) -> Self {
         let player = Player::new_admin(user);
-        let mut players = IndexMap::new();
-        players.insert(player.user.id, player);
+        let players = [(player.user.id, player)].into_iter().collect();
 
         Game {
             id: GameId(Uuid::new_v4()),
-            backlog_stories: Vec::new(),
+            backlog_stories: IndexMap::new(),
+            estimated_stories: IndexMap::new(),
             selected_story: None,
-            estimated_stories: Vec::new(),
             players,
         }
     }
 
-    pub fn active_players(&self) -> Vec<Player> {
+    pub fn to_active_players(&self) -> IndexMap<UserId, Player> {
         self.players
-            .iter()
-            .filter(|(_, player)| player.active)
-            .map(|(_, player)| player.clone())
-            .collect()
+            .clone()
+            .into_iter()
+            .filter_map(|(user_id, player)| player.active.then_some((user_id, player)))
+            .collect::<IndexMap<UserId, Player>>()
     }
 
-    pub fn reduce(mut self, user_id: UserId, action: GameAction) -> Self {
-        if let GameAction::PlayerJoined(user) = action.clone() {
+    pub fn reduce(&mut self, user_id: UserId, action: GameAction) {
+        if let GameAction::PlayerJoined(user) = action {
             self.add_player(user);
         } else if let Some(player) = self.players.get(&user_id) {
             let is_admin = player.role == PlayerRole::Admin;
@@ -112,7 +101,6 @@ impl Game {
                 | GameAction::VotesRevealed => (),
             };
         }
-        self
     }
 
     fn add_player(&mut self, user: User) {
@@ -129,56 +117,49 @@ impl Game {
     }
 
     fn add_stories(&mut self, stories: Vec<BacklogStory>) {
+        let stories = stories
+            .into_iter()
+            .map(|s| (s.id, s))
+            .collect::<IndexMap<StoryId, BacklogStory>>();
         self.backlog_stories.extend(stories);
-        // TODO: filter our duplicates???
-        self.backlog_stories.dedup_by(|a, b| a.id == b.id);
     }
 
     fn change_story_position(&mut self, story_id: StoryId, new_idx: usize) {
-        if new_idx >= self.backlog_stories.len() {
-            return;
-        }
-
-        if let Some(idx) = self.backlog_stories.iter().position(|s| s.id == story_id) {
-            let removed = self.backlog_stories.remove(idx);
-            self.backlog_stories.insert(new_idx, removed);
+        if let Some((idx, _, _)) = self.backlog_stories.get_full(&story_id) {
+            self.backlog_stories.move_index(idx, new_idx);
         }
     }
 
     fn update_story(&mut self, story_id: StoryId, info: StoryInfo) {
-        if let Some(idx) = self.backlog_stories.iter().position(|s| s.id == story_id) {
-            let story = self.backlog_stories.get_mut(idx).unwrap();
+        if let Some(story) = self.backlog_stories.get_mut(&story_id) {
             story.info = info;
         }
     }
 
     fn remove_story(&mut self, story_id: StoryId) {
-        self.backlog_stories.retain(|s| s.id != story_id);
+        self.backlog_stories.shift_remove(&story_id);
     }
 
     fn open_story_for_voting(&mut self, story_id: StoryId) {
         // if there was a story already open for voting add it back to backlog
         self.close_story_for_voting();
 
-        if let Some(idx) = self.backlog_stories.iter().position(|s| s.id == story_id) {
-            let story = self.backlog_stories.remove(idx);
+        if let Some(story) = self.backlog_stories.shift_remove(&story_id) {
             let story = story.select_for_estimation();
             self.selected_story = Some(story);
         }
     }
 
     fn close_story_for_voting(&mut self) {
-        if let Some(story) = &self.selected_story {
-            let story = story.move_to_backlog();
-            self.backlog_stories.insert(0, story);
-            self.selected_story = None;
+        if let Some(story) = self.selected_story.take() {
+            let story = story.into_backlog();
+            self.backlog_stories.insert(story.id, story);
         }
     }
 
     fn cast_vote(&mut self, player_id: UserId, vote: Vote) {
-        if let Some(mut story) = self.selected_story.clone() {
+        if let Some(ref mut story) = self.selected_story {
             story.add_vote(player_id, vote);
-            self.selected_story = Some(story);
         }
     }
 
@@ -208,7 +189,7 @@ impl Game {
                 });
                 let story = story.accept_with_estimate(estimate);
                 self.selected_story = None;
-                self.estimated_stories.push(story);
+                self.estimated_stories.insert(story.id, story);
             }
             _ => (),
         }
@@ -297,18 +278,18 @@ impl SelectedStory {
         }
     }
 
-    pub fn move_to_backlog(&self) -> BacklogStory {
+    pub fn into_backlog(self) -> BacklogStory {
         BacklogStory {
             id: self.id,
-            info: self.info.clone(),
+            info: self.info,
         }
     }
 
     pub fn votes_avrg(&self) -> f32 {
         if self.votes.is_empty() {
-            0f32
+            0.
         } else {
-            let val: i32 = self.votes.iter().map(|(_, vote)| vote.0).sum();
+            let val = self.votes.iter().map(|(_, vote)| vote.0).sum::<i32>();
             val as f32 / self.votes.len() as f32
         }
     }
@@ -363,14 +344,8 @@ impl Vote {
     }
 }
 
-#[derive(PartialEq, Eq, Hash, Clone, Copy, Serialize, Deserialize, Debug)]
+#[derive(PartialEq, Eq, Hash, Clone, Copy, Serialize, Deserialize, Debug, derive_more::Display)]
 pub struct UserId(Uuid);
-
-impl fmt::Display for UserId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
 
 #[derive(PartialEq, Clone, Serialize, Deserialize, Debug)]
 pub struct User {

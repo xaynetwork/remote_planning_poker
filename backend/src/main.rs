@@ -15,7 +15,6 @@ use std::{collections::HashMap, net::SocketAddr, sync::Arc};
 use tokio::sync::{broadcast, Mutex, RwLock};
 use tower_http::trace::{DefaultMakeSpan, TraceLayer};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-use uuid::Uuid;
 
 // Our shared state
 #[derive(Default)]
@@ -61,19 +60,21 @@ async fn create_game(
 ) -> impl IntoResponse {
     let game = Game::new(user);
     let (tx, _rx) = broadcast::channel(100);
+    let id = game.id;
 
-    state.channels.write().await.insert(game.id, tx);
-    state.games.lock().await.insert(game.id, game.clone());
+    tokio::join! {
+        async { state.channels.write().await.insert(id, tx) },
+        async { state.games.lock().await.insert(id, game) },
+    };
 
-    (StatusCode::CREATED, Json(game.id))
+    (StatusCode::CREATED, Json(id))
 }
 
 async fn ws_handler(
     ws: WebSocketUpgrade,
-    Path(id): Path<Uuid>,
+    Path(game_id): Path<GameId>,
     Extension(state): Extension<Arc<AppState>>,
 ) -> Response {
-    let game_id = GameId::new(id);
     ws.on_upgrade(move |socket| handle_socket(socket, state, game_id))
 }
 
@@ -151,9 +152,8 @@ async fn update_state_on_message(
     action: GameAction,
 ) {
     let mut games = state.games.lock().await;
-    if let Some(game) = games.remove(&game_id) {
-        let game = game.reduce(user_id, action);
-        games.insert(game.id, game);
+    if let Some(game) = games.get_mut(&game_id) {
+        game.reduce(user_id, action);
     } else {
         tracing::warn!("trying to update game that doesn't exists");
     }
