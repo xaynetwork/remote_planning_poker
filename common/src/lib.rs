@@ -158,34 +158,36 @@ impl Game {
     }
 
     fn reveal_votes(&mut self) {
-        match &mut self.selected_story {
-            Some(story) if !story.votes_revealed && !story.votes.is_empty() => {
-                story.reveal_votes();
-                self.selected_story = story.clone().into();
-            }
-            _ => (),
+        if let Some(story) = self
+            .selected_story
+            .as_mut()
+            .filter(|story| !story.votes_revealed && !story.votes.is_empty())
+        {
+            story.reveal_votes();
         }
     }
 
     fn clear_votes(&mut self) {
-        if let Some(story) = &mut self.selected_story {
+        if let Some(story) = self.selected_story.as_mut() {
             story.clear_votes();
-            self.selected_story = story.clone().into();
         }
     }
 
     fn accept_round(&mut self, estimate: Option<Vote>) {
-        match &self.selected_story {
-            Some(story) if story.votes_revealed && !story.votes.is_empty() => {
-                let estimate = estimate.unwrap_or_else(|| {
-                    let avrg = story.votes_avrg();
-                    Vote::get_closest_vote(&avrg)
-                });
-                let story = story.accept_with_estimate(estimate);
-                self.selected_story = None;
-                self.estimated_stories.insert(story.id, story);
-            }
-            _ => (),
+        if self.selected_story.is_none()
+            || matches!(&self.selected_story, Some(story) if !story.votes_revealed
+            || story.votes.is_empty())
+        {
+            return;
+        }
+
+        if let Some(story) = self.selected_story.take() {
+            let estimate = estimate.unwrap_or_else(|| {
+                let avrg = story.votes_avrg();
+                Vote::get_closest_vote(&avrg)
+            });
+            let story = story.accept_with_estimate(estimate);
+            self.estimated_stories.insert(story.id, story);
         }
     }
 }
