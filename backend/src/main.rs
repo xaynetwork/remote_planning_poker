@@ -153,7 +153,7 @@ async fn update_state_on_message(
 ) {
     let mut games = state.games.lock().await;
     if let Some(game) = games.get_mut(&game_id) {
-        game.reduce(user_id, action);
+        game.update(user_id, action);
     } else {
         tracing::warn!("trying to update game that doesn't exists");
     }

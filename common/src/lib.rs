@@ -1,6 +1,5 @@
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
-use std::fmt;
 use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -60,13 +59,12 @@ impl Game {
 
     pub fn to_active_players(&self) -> IndexMap<UserId, Player> {
         self.players
-            .clone()
-            .into_iter()
-            .filter_map(|(user_id, player)| player.active.then_some((user_id, player)))
-            .collect::<IndexMap<UserId, Player>>()
+            .iter()
+            .filter_map(|(user_id, player)| player.active.then_some((*user_id, player.clone())))
+            .collect()
     }
 
-    pub fn reduce(&mut self, user_id: UserId, action: GameAction) {
+    pub fn update(&mut self, user_id: UserId, action: GameAction) {
         if let GameAction::PlayerJoined(user) = action {
             self.add_player(user);
         } else if let Some(player) = self.players.get(&user_id) {
@@ -117,11 +115,8 @@ impl Game {
     }
 
     fn add_stories(&mut self, stories: Vec<BacklogStory>) {
-        let stories = stories
-            .into_iter()
-            .map(|s| (s.id, s))
-            .collect::<IndexMap<StoryId, BacklogStory>>();
-        self.backlog_stories.extend(stories);
+        self.backlog_stories
+            .extend(stories.into_iter().map(|s| (s.id, s)));
     }
 
     fn change_story_position(&mut self, story_id: StoryId, new_idx: usize) {
@@ -145,8 +140,7 @@ impl Game {
         self.close_story_for_voting();
 
         if let Some(story) = self.backlog_stories.shift_remove(&story_id) {
-            let story = story.select_for_estimation();
-            self.selected_story = Some(story);
+            self.selected_story = story.select_for_estimation().into();
         }
     }
 
@@ -164,19 +158,19 @@ impl Game {
     }
 
     fn reveal_votes(&mut self) {
-        match self.selected_story.clone() {
-            Some(mut story) if !story.votes_revealed && !story.votes.is_empty() => {
+        match &mut self.selected_story {
+            Some(story) if !story.votes_revealed && !story.votes.is_empty() => {
                 story.reveal_votes();
-                self.selected_story = Some(story);
+                self.selected_story = story.clone().into();
             }
             _ => (),
         }
     }
 
     fn clear_votes(&mut self) {
-        if let Some(mut story) = self.selected_story.clone() {
+        if let Some(story) = &mut self.selected_story {
             story.clear_votes();
-            self.selected_story = Some(story);
+            self.selected_story = story.clone().into();
         }
     }
 
@@ -196,14 +190,8 @@ impl Game {
     }
 }
 
-#[derive(PartialEq, Eq, Hash, Clone, Copy, Serialize, Deserialize, Debug)]
+#[derive(PartialEq, Eq, Hash, Clone, Copy, Serialize, Deserialize, Debug, derive_more::Display)]
 pub struct StoryId(Uuid);
-
-impl fmt::Display for StoryId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
 
 #[derive(PartialEq, Eq, Clone, Serialize, Deserialize, Debug)]
 pub struct StoryInfo {
