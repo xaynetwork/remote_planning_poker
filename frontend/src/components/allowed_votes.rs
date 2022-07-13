@@ -14,7 +14,7 @@ pub fn allowed_votes(props: &Props) -> Html {
         .iter()
         .map(|vote| {
             let onclick = {
-                let vote = vote.clone();
+                let vote = *vote;
                 let on_vote_click = props.on_vote_click.clone();
                 Callback::from(move |_| on_vote_click.emit(vote))
             };
