@@ -1,10 +1,11 @@
 use crate::components::backlog_story_entry::BacklogStoryEntry;
-use common::{BacklogStory, GameAction};
+use common::{BacklogStory, GameAction, StoryId};
+use indexmap::IndexMap;
 use yew::prelude::*;
 
 #[derive(Clone, PartialEq, Properties)]
 pub struct Props {
-    pub stories: Vec<BacklogStory>,
+    pub stories: IndexMap<StoryId, BacklogStory>,
     pub on_action: Callback<GameAction>,
 }
 
@@ -14,8 +15,8 @@ pub fn backlog_stories(props: &Props) -> Html {
         .stories
         .iter()
         .enumerate()
-        .map(|(idx, story)| {
-            let key = story.id.to_string();
+        .map(|(idx, (story_id, story))| {
+            let key = story_id.to_string();
             let story = story.clone();
             let on_action = props.on_action.clone();
             html! {

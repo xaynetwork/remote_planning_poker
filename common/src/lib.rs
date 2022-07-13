@@ -32,15 +32,19 @@ impl GameId {
     pub fn new(id: Uuid) -> Self {
         Self(id)
     }
+
+    pub fn to_uuid(&self) -> Uuid {
+        self.0
+    }
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct Game {
     pub id: GameId,
-    players: IndexMap<UserId, Player>,
-    backlog_stories: IndexMap<StoryId, BacklogStory>,
-    estimated_stories: IndexMap<StoryId, EstimatedStory>,
-    selected_story: Option<SelectedStory>,
+    pub players: IndexMap<UserId, Player>,
+    pub backlog_stories: IndexMap<StoryId, BacklogStory>,
+    pub estimated_stories: IndexMap<StoryId, EstimatedStory>,
+    pub selected_story: Option<SelectedStory>,
 }
 
 impl Game {
@@ -54,6 +58,13 @@ impl Game {
             estimated_stories: IndexMap::new(),
             selected_story: None,
             players,
+        }
+    }
+
+    pub fn is_user_admin(&self, user_id: &UserId) -> bool {
+        match self.players.get(user_id) {
+            Some(player) if player.role == PlayerRole::Admin => true,
+            _ => false,
         }
     }
 

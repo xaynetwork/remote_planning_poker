@@ -1,11 +1,12 @@
-use common::Player;
+use common::{Player, UserId};
+use indexmap::IndexMap;
 use yew::prelude::*;
 
 use crate::components::player_entry::PlayerEntry;
 
 #[derive(Clone, PartialEq, Properties)]
 pub struct Props {
-    pub players: Vec<Player>,
+    pub players: IndexMap<UserId, Player>,
 }
 
 #[function_component(Players)]
@@ -13,8 +14,8 @@ pub fn players(props: &Props) -> Html {
     let players = props
         .players
         .iter()
-        .map(|player| {
-            let key = player.user.id.to_string();
+        .map(|(user_id, player)| {
+            let key = user_id.to_string();
             let player = player.clone();
             html! {
                 <PlayerEntry {key} {player} />

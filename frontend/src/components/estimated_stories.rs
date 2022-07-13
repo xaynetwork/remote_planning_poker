@@ -1,11 +1,12 @@
-use common::EstimatedStory;
+use common::{EstimatedStory, StoryId};
+use indexmap::IndexMap;
 use yew::prelude::*;
 
 use crate::components::estimated_story_entry::EstimatedStoryEntry;
 
 #[derive(Clone, Debug, PartialEq, Properties)]
 pub struct Props {
-    pub stories: Vec<EstimatedStory>,
+    pub stories: IndexMap<StoryId, EstimatedStory>,
 }
 
 #[function_component(EstimatedStories)]
@@ -13,10 +14,10 @@ pub fn estimated_stories(props: &Props) -> Html {
     let stories = props
         .stories
         .iter()
-        .map(|story| {
+        .map(|(id, story)| {
             html! {
                 <EstimatedStoryEntry
-                    key={story.id.to_string()}
+                    key={id.to_string()}
                     story={story.clone()}
                 />
             }

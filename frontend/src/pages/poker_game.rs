@@ -1,4 +1,4 @@
-use common::{AppEvent, Game, PlayerRole, User};
+use common::{AppEvent, Game, User};
 use std::{ops::Deref, rc::Rc};
 use uuid::Uuid;
 use yew::prelude::*;
@@ -26,7 +26,6 @@ enum GameState {
 }
 
 impl Reducible for GameState {
-    /// Reducer Action Type
     type Action = AppEvent;
 
     /// Reducer Function
@@ -38,13 +37,16 @@ impl Reducible for GameState {
                 // TODO: this shouldn't happen, so figure out how to handle it
                 _ => GameState::Loading,
             },
-            GameState::Playing(game) => match message {
-                AppEvent::GameMessage(user_id, action) => {
-                    let game = game.clone().reduce(user_id, action);
-                    GameState::Playing(game)
+            GameState::Playing(game) => {
+                let mut game = game.clone();
+                match message {
+                    AppEvent::GameMessage(user_id, action) => {
+                        game.update(user_id, action);
+                        GameState::Playing(game)
+                    }
+                    _ => GameState::Playing(game),
                 }
-                _ => GameState::Playing(game.clone()),
-            },
+            }
             GameState::NotFound => GameState::NotFound,
         }
         .into()
@@ -85,11 +87,8 @@ pub fn poker_game(props: &Props) -> Html {
             <Redirect<Route> to={Route::NotFound}/>
         },
         GameState::Playing(game) => {
-            let players = game.active_players();
-            let is_admin = match game.players.get(&user.id) {
-                Some(player) if player.role == PlayerRole::Admin => true,
-                _ => false,
-            };
+            let players = game.to_active_players();
+            let is_admin = game.is_user_admin(&user.id);
             let (label, bg_class) = match conn.ready_state {
                 UseWebSocketReadyState::Connecting => ("Connecting", "bg-yellow-500"),
                 UseWebSocketReadyState::Open => ("Connection open", "bg-green-500"),
