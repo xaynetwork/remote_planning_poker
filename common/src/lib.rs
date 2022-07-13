@@ -37,10 +37,10 @@ impl GameId {
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct Game {
     pub id: GameId,
-    pub players: IndexMap<UserId, Player>,
-    pub backlog_stories: IndexMap<StoryId, BacklogStory>,
-    pub estimated_stories: IndexMap<StoryId, EstimatedStory>,
-    pub selected_story: Option<SelectedStory>,
+    players: IndexMap<UserId, Player>,
+    backlog_stories: IndexMap<StoryId, BacklogStory>,
+    estimated_stories: IndexMap<StoryId, EstimatedStory>,
+    selected_story: Option<SelectedStory>,
 }
 
 impl Game {
