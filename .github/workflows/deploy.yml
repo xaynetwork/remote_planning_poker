@@ -38,15 +38,15 @@ jobs:
         run: just build
 
       - name: Create archive
-        run: tar -cvf estimation.tar target/release/backend frontend/dist
+        run: tar -cvf remote_planning_poker.tar target/release/backend frontend/dist
 
       - name: Upload archive
         uses: actions/upload-artifact@v3
         with:
-          name: estimation
+          name: remote_planning_poker
           retention-days: 1
           if-no-files-found: error
-          path: estimation.tar
+          path: remote_planning_poker.tar
 
   docker-build:
     runs-on: ubuntu-20.04
@@ -63,10 +63,10 @@ jobs:
         id: artifacts
         uses: actions/download-artifact@v3
         with:
-          name: estimation
+          name: remote_planning_poker
 
       - name: Untar files
-        run: tar -xvf estimation.tar
+        run: tar -xvf remote_planning_poker.tar
 
       - name: Create docker image
         run: |
