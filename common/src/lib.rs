@@ -1,5 +1,6 @@
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
+use std::str::FromStr;
 use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -34,13 +35,21 @@ impl GameId {
     }
 }
 
+impl FromStr for GameId {
+    type Err = <Uuid as FromStr>::Err;
+
+    fn from_str(game_id_str: &str) -> Result<Self, Self::Err> {
+        Uuid::parse_str(game_id_str).map(Self)
+    }
+}
+
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct Game {
     pub id: GameId,
-    players: IndexMap<UserId, Player>,
-    backlog_stories: IndexMap<StoryId, BacklogStory>,
-    estimated_stories: IndexMap<StoryId, EstimatedStory>,
-    selected_story: Option<SelectedStory>,
+    pub players: IndexMap<UserId, Player>,
+    pub backlog_stories: IndexMap<StoryId, BacklogStory>,
+    pub estimated_stories: IndexMap<StoryId, EstimatedStory>,
+    pub selected_story: Option<SelectedStory>,
 }
 
 impl Game {
@@ -54,6 +63,13 @@ impl Game {
             estimated_stories: IndexMap::new(),
             selected_story: None,
             players,
+        }
+    }
+
+    pub fn is_user_admin(&self, user_id: &UserId) -> bool {
+        match self.players.get(user_id) {
+            Some(player) if player.role == PlayerRole::Admin => true,
+            _ => false,
         }
     }
 
@@ -120,6 +136,9 @@ impl Game {
     }
 
     fn change_story_position(&mut self, story_id: StoryId, new_idx: usize) {
+        if new_idx >= self.backlog_stories.len() {
+            return;
+        }
         if let Some((idx, _, _)) = self.backlog_stories.get_full(&story_id) {
             self.backlog_stories.move_index(idx, new_idx);
         }
@@ -147,6 +166,7 @@ impl Game {
     fn close_story_for_voting(&mut self) {
         if let Some(story) = self.selected_story.take() {
             let story = story.into_backlog();
+            // TODO: add it at index 0
             self.backlog_stories.insert(story.id, story);
         }
     }
@@ -158,35 +178,39 @@ impl Game {
     }
 
     fn reveal_votes(&mut self) {
-        match &mut self.selected_story {
-            Some(story) if !story.votes_revealed && !story.votes.is_empty() => {
-                story.reveal_votes();
-                self.selected_story = story.clone().into();
-            }
-            _ => (),
+        if let Some(story) = self
+            .selected_story
+            .as_mut()
+            .filter(|story| !story.votes_revealed && !story.votes.is_empty())
+        {
+            story.reveal_votes();
         }
     }
 
     fn clear_votes(&mut self) {
-        if let Some(story) = &mut self.selected_story {
+        if let Some(story) = self.selected_story.as_mut() {
             story.clear_votes();
-            self.selected_story = story.clone().into();
         }
     }
 
     fn accept_round(&mut self, estimate: Option<Vote>) {
-        match &self.selected_story {
-            Some(story) if story.votes_revealed && !story.votes.is_empty() => {
-                let estimate = estimate.unwrap_or_else(|| {
-                    let avrg = story.votes_avrg();
-                    Vote::get_closest_vote(&avrg)
-                });
-                let story = story.accept_with_estimate(estimate);
-                self.selected_story = None;
-                self.estimated_stories.insert(story.id, story);
-            }
-            _ => (),
+        if self.selected_story.is_none()
+            || matches!(
+                &self.selected_story,
+                Some(story) if !story.votes_revealed || story.votes.is_empty()
+            )
+        {
+            return;
         }
+
+        let story =
+            self.selected_story.take().unwrap(/* checked above that some value is contained */);
+        let estimate = estimate.unwrap_or_else(|| {
+            let avrg = story.votes_avrg();
+            Vote::get_closest_vote(&avrg)
+        });
+        let story = story.accept_with_estimate(estimate);
+        self.estimated_stories.insert(story.id, story);
     }
 }
 

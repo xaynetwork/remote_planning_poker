@@ -1,43 +1,38 @@
+use common::User;
 use gloo_storage::{LocalStorage, Storage};
-use serde::{Deserialize, Serialize};
 use std::ops::Deref;
-use uuid::Uuid;
 use yew::prelude::*;
 
-use crate::components::nickname_input::NicknameInput;
+use crate::components::login::Login;
 
 const STORAGE_KEY: &str = "yew.user.self";
 
-#[derive(Serialize, Deserialize, Eq, PartialEq, Debug, Clone)]
-struct User {
-    id: Uuid,
-    nickname: String,
-}
-
 #[derive(Properties, PartialEq)]
-pub struct UserProviderProps {
+pub struct Props {
     pub children: Children,
 }
 
 #[function_component(UserProvider)]
-pub fn user_provider(props: &UserProviderProps) -> Html {
+pub fn user_provider(props: &Props) -> Html {
     let user = use_state(|| LocalStorage::get(STORAGE_KEY).ok() as Option<User>);
 
-    use_effect_with_deps(
-        move |user| {
-            if let Some(user) = user.deref() {
-                LocalStorage::set(STORAGE_KEY, user).expect("failed to set");
-            }
-            || ()
-        },
-        user.clone(),
-    );
+    {
+        let user = user.clone();
+        use_effect_with_deps(
+            move |user| {
+                if let Some(user) = user.deref() {
+                    LocalStorage::set(STORAGE_KEY, user).expect("failed to set");
+                }
+                || ()
+            },
+            user,
+        )
+    };
 
     let onsubmit = {
         let user = user.clone();
         Callback::from(move |nickname: String| {
-            let id = Uuid::new_v4();
-            let new_user = User { id, nickname };
+            let new_user = User::new(nickname);
             user.set(Some(new_user));
         })
     };
@@ -48,9 +43,7 @@ pub fn user_provider(props: &UserProviderProps) -> Html {
               { props.children.clone() }
             </ContextProvider<User>>
         } else {
-            <section style="padding: 32px">
-                <NicknameInput {onsubmit} />
-            </section>
+            <Login {onsubmit} />
         }
     }
 }
