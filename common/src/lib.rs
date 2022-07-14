@@ -26,10 +26,6 @@ pub enum AppEvent {
     GameMessage(UserId, GameAction),
 }
 
-/// A general error that can occur when working with GameId.
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
-pub struct ParseError(String);
-
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Debug, derive_more::Display)]
 pub struct GameId(Uuid);
 
@@ -40,11 +36,10 @@ impl GameId {
 }
 
 impl FromStr for GameId {
-    type Err = ParseError;
+    type Err = <Uuid as FromStr>::Err;
 
     fn from_str(game_id_str: &str) -> Result<Self, Self::Err> {
-        let uuid = Uuid::parse_str(game_id_str).map_err(|e| ParseError(e.to_string()))?;
-        Ok(GameId(uuid))
+        Uuid::parse_str(game_id_str).map(Self)
     }
 }
 
