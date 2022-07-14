@@ -1,0 +1,101 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  rust-build:
+    runs-on: hetzner-pm
+    container:
+      image: xaynetci/yellow:v2
+    timeout-minutes: 45
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579 # v2.4.0
+
+      - uses: Swatinem/rust-cache@d12701459954fec471b2d34cdf7ea3374b026383 # v1
+        with:
+          key: rust-build
+
+      - name: Install Node.js and OpenSSL
+        run: |
+          curl -fsSL https://deb.nodesource.com/setup_16.x | bash -
+          apt-get install -y libssl-dev nodejs pkg-config
+
+      - name: Install dependencies
+        run: just install-deps
+
+      - name: Build artifacts
+        run: just build
+
+      - name: Create archive
+        run: tar -cvf remote_planning_poker.tar target/release/backend frontend/dist
+
+      - name: Upload archive
+        uses: actions/upload-artifact@v3
+        with:
+          name: remote_planning_poker
+          retention-days: 1
+          if-no-files-found: error
+          path: remote_planning_poker.tar
+
+  docker-build:
+    runs-on: ubuntu-20.04
+    timeout-minutes: 30
+    needs: [rust-build]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579 # v2.4.0
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Download artifacts
+        id: artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: remote_planning_poker
+
+      - name: Untar files
+        run: tar -xvf remote_planning_poker.tar
+
+      - name: Create docker image
+        run: |
+          TAG="$(git rev-parse --short HEAD)"
+          if [[ "${GITHUB_REF#refs/heads/}" != "" ]]; then
+            #TAG="$(echo "branch-${GITHUB_REF#refs/heads/}" | tr '[:upper:]' '[:lower:]')"
+            TAG="branch-${GITHUB_REF#refs/heads/}"
+          fi
+          IMAGE_NAME="xaynetci/xayn_estimation:$TAG"
+
+          docker build -t "${IMAGE_NAME}" .
+          echo "IMAGE_NAME=${IMAGE_NAME}" >> $GITHUB_ENV
+          echo "TAG=${TAG}" >> $GITHUB_ENV
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v1
+        with:
+          username: "${{ secrets.DOCKERHUB_USERNAME }}"
+          password: "${{ secrets.DOCKERHUB_TOKEN }}"
+
+      - name: docker push
+        id: docker-push
+        run: docker push "${IMAGE_NAME}"
+
+      - name: Trigger Kubernetes Web deployment
+        id: k8s-deployment
+        if: steps.docker-push.outcome == 'success'
+        env:
+          GHA_TOKEN: ${{ secrets.GHA_TOKEN }}
+          GHA_ACTOR: ${{ github.actor }}
+        run: |
+          curl -v -XPOST https://api.github.com/repos/xaynetwork/xayn_infrastructure/dispatches -H "Authorization: token ${GHA_TOKEN}" -H "Accept: application/vnd.github.v3+json" -H "Content-Type: application/json" -d "{\"event_type\":\"remote_poker-deployment\",\"client_payload\":{\"actor\":\"${GHA_ACTOR}\",\"tag\":\"${TAG}\"}}"

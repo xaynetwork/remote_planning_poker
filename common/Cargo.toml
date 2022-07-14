@@ -2,11 +2,10 @@
 name = "common"
 version = "0.1.0"
 edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+license = "Apache-2.0"
 
 [dependencies]
 derive_more = { version = "0.99.16", default-features = false, features = ["display"] }
 indexmap = { version = "1.8.1", features = ["serde"] }
 serde = { version = "1.0", features = ["derive"] }
-uuid = { version = "1.0.0", features = ["serde", "v4"] }
+uuid = { version = "1.0.0", features = ["serde", "v4", "js"] }
