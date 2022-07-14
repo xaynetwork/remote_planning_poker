@@ -1,4 +1,4 @@
-use uuid::Uuid;
+use common::GameId;
 use yew::prelude::*;
 use yew_router::prelude::*;
 
@@ -12,7 +12,7 @@ pub enum Route {
     #[at("/")]
     Home,
     #[at("/game/:id")]
-    PokerGame { id: Uuid },
+    PokerGame { id: GameId },
     #[not_found]
     #[at("/404")]
     NotFound,

@@ -20,7 +20,7 @@ pub fn allowed_votes(props: &Props) -> Html {
             };
             html! {
                 <div key={vote.value()} class="m-1">
-                    <AllowedVoteButton vote={vote.clone()} {onclick} />
+                    <AllowedVoteButton vote={*vote} {onclick} />
                 </div>
             }
         })

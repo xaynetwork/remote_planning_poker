@@ -18,7 +18,7 @@ pub fn backlog_stories(props: &Props) -> Html {
         .map(|(idx, (story_id, story))| {
             let key = story_id.to_string();
             let story = story.clone();
-            let on_action = props.on_action.clone();
+            let on_action = &props.on_action;
             html! {
                 <BacklogStoryEntry {key} {idx} {story} {on_action} />
             }

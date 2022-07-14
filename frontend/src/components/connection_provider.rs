@@ -1,6 +1,5 @@
 use common::{AppEvent, GameAction, GameId, User};
 use gloo_net::http::Request;
-use uuid::Uuid;
 use yew::prelude::*;
 use yew_hooks::{
     use_async, use_location, use_web_socket_with_options, UseAsyncHandle, UseWebSocketOptions,
@@ -17,7 +16,7 @@ pub struct Connection {
     pub send: Callback<GameAction>,
 }
 
-pub fn use_game_connection(game_id: &Uuid, user: &User) -> Connection {
+pub fn use_game_connection(game_id: &GameId, user: &User) -> Connection {
     let location = use_location();
     let base_url = if &location.hostname == "localhost" {
         "localhost:3000"

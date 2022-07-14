@@ -31,7 +31,7 @@ pub fn home() -> Html {
                 }
             } else if let Some(game_id) = &create_game.data {
                 html!{
-                    <Redirect<Route> to={Route::PokerGame { id: game_id.to_uuid() }}/>
+                    <Redirect<Route> to={Route::PokerGame { id: *game_id }}/>
                 }
             } else {
                 html! {

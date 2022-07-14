@@ -22,12 +22,12 @@ pub fn backlog_story_entry(props: &Props) -> Html {
     let state = use_state(|| EntryState::Default);
 
     let on_select = {
-        let story_id = props.story.id.clone();
+        let story_id = props.story.id;
         let on_action = props.on_action.clone();
         Callback::from(move |_| on_action.emit(GameAction::VotingOpened(story_id)))
     };
     let on_remove = {
-        let story_id = props.story.id.clone();
+        let story_id = props.story.id;
         let on_action = props.on_action.clone();
         Callback::from(move |_| on_action.emit(GameAction::StoryRemoved(story_id)))
     };
@@ -45,19 +45,19 @@ pub fn backlog_story_entry(props: &Props) -> Html {
     };
     let on_go_up = {
         let new_idx = if props.idx > 0 { props.idx - 1 } else { 0 };
-        let story_id = props.story.id.clone();
+        let story_id = props.story.id;
         let on_action = props.on_action.clone();
         Callback::from(move |_| on_action.emit(GameAction::StoryPositionChanged(story_id, new_idx)))
     };
     let on_go_down = {
         let new_idx = props.idx + 1;
-        let story_id = props.story.id.clone();
+        let story_id = props.story.id;
         let on_action = props.on_action.clone();
         Callback::from(move |_| on_action.emit(GameAction::StoryPositionChanged(story_id, new_idx)))
     };
     let onkeypress = {
         let state = state.clone();
-        let story_id = props.story.id.clone();
+        let story_id = props.story.id;
         let on_action = props.on_action.clone();
         Callback::from(move |e: KeyboardEvent| {
             if e.key() == "Enter" {
@@ -78,6 +78,20 @@ pub fn backlog_story_entry(props: &Props) -> Html {
     let buttons = match *state {
         EntryState::Default => html! {
             <>
+                <button
+                    title="Go up"
+                    class={classes!(button_class, "hover:text-blue-400")}
+                    onclick={on_go_up}
+                >
+                    <GoUpIcon />
+                </button>
+                <button
+                    title="Go down"
+                    class={classes!(button_class, "hover:text-blue-400")}
+                    onclick={on_go_down}
+                >
+                    <GoDownIcon />
+                </button>
                 <button
                     title="Select to start round"
                     class={classes!(
@@ -103,20 +117,6 @@ pub fn backlog_story_entry(props: &Props) -> Html {
                     onclick={on_remove_intent}
                 >
                     <RemoveIcon />
-                </button>
-                <button
-                    title="Go up"
-                    class={classes!(button_class, "hover:text-blue-400")}
-                    onclick={on_go_up}
-                >
-                    <GoUpIcon />
-                </button>
-                <button
-                    title="Go down"
-                    class={classes!(button_class, "hover:text-blue-400")}
-                    onclick={on_go_down}
-                >
-                    <GoDownIcon />
                 </button>
             </>
         },

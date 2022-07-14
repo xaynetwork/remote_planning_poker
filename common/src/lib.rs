@@ -1,5 +1,6 @@
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
+use std::str::FromStr;
 use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -25,6 +26,10 @@ pub enum AppEvent {
     GameMessage(UserId, GameAction),
 }
 
+/// A general error that can occur when working with GameId.
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub struct ParseError(String);
+
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Debug, derive_more::Display)]
 pub struct GameId(Uuid);
 
@@ -32,9 +37,14 @@ impl GameId {
     pub fn new(id: Uuid) -> Self {
         Self(id)
     }
+}
 
-    pub fn to_uuid(&self) -> Uuid {
-        self.0
+impl FromStr for GameId {
+    type Err = ParseError;
+
+    fn from_str(game_id_str: &str) -> Result<Self, Self::Err> {
+        let uuid = Uuid::parse_str(game_id_str).map_err(|e| ParseError(e.to_string()))?;
+        Ok(GameId(uuid))
     }
 }
 
@@ -131,6 +141,9 @@ impl Game {
     }
 
     fn change_story_position(&mut self, story_id: StoryId, new_idx: usize) {
+        if new_idx >= self.backlog_stories.len() {
+            return;
+        }
         if let Some((idx, _, _)) = self.backlog_stories.get_full(&story_id) {
             self.backlog_stories.move_index(idx, new_idx);
         }
@@ -158,6 +171,7 @@ impl Game {
     fn close_story_for_voting(&mut self) {
         if let Some(story) = self.selected_story.take() {
             let story = story.into_backlog();
+            // TODO: add it at index 0
             self.backlog_stories.insert(story.id, story);
         }
     }
@@ -186,20 +200,22 @@ impl Game {
 
     fn accept_round(&mut self, estimate: Option<Vote>) {
         if self.selected_story.is_none()
-            || matches!(&self.selected_story, Some(story) if !story.votes_revealed
-            || story.votes.is_empty())
+            || matches!(
+                &self.selected_story,
+                Some(story) if !story.votes_revealed || story.votes.is_empty()
+            )
         {
             return;
         }
 
-        if let Some(story) = self.selected_story.take() {
-            let estimate = estimate.unwrap_or_else(|| {
-                let avrg = story.votes_avrg();
-                Vote::get_closest_vote(&avrg)
-            });
-            let story = story.accept_with_estimate(estimate);
-            self.estimated_stories.insert(story.id, story);
-        }
+        let story =
+            self.selected_story.take().unwrap(/* checked above that some value is contained */);
+        let estimate = estimate.unwrap_or_else(|| {
+            let avrg = story.votes_avrg();
+            Vote::get_closest_vote(&avrg)
+        });
+        let story = story.accept_with_estimate(estimate);
+        self.estimated_stories.insert(story.id, story);
     }
 }
 

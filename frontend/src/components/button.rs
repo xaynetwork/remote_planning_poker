@@ -21,8 +21,8 @@ pub fn button(props: &Props) -> Html {
                 "text-white", "font-bold",
                 "py-2", "px-4", "rounded",
                 "border-b-4", "border-blue-700", "hover:border-blue-500",
-                disabled.then(||Some("opacity-50")),
-                disabled.then(||Some("cursor-not-allowed")),
+                disabled.then_some("opacity-50"),
+                disabled.then_some("cursor-not-allowed"),
             )}
             {disabled}
             {onclick}

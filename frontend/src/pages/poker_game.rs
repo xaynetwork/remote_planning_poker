@@ -1,6 +1,5 @@
-use common::{AppEvent, Game, User};
+use common::{AppEvent, Game, GameId, User};
 use std::{ops::Deref, rc::Rc};
-use uuid::Uuid;
 use yew::prelude::*;
 use yew_hooks::UseWebSocketReadyState;
 use yew_router::prelude::*;
@@ -16,7 +15,7 @@ use crate::{
 
 #[derive(Clone, Debug, Eq, PartialEq, Properties)]
 pub struct Props {
-    pub id: Uuid,
+    pub id: GameId,
 }
 
 enum GameState {
@@ -110,12 +109,12 @@ pub fn poker_game(props: &Props) -> Html {
                                 if let Some(story) = &game.selected_story {
                                     let key = story.id.to_string();
                                     let story = story.clone();
-                                    let user_id = user.id.clone();
+                                    let user_id = user.id;
                                     let players = game.players.clone();
                                     html! {
                                         <SelectedStoryEntry
                                             {key} {story} {user_id} {players}
-                                            on_action={conn.send.clone()}
+                                            on_action={&conn.send}
                                         />
                                     }
                                 } else {
@@ -133,9 +132,9 @@ pub fn poker_game(props: &Props) -> Html {
                                 <>
                                     <BacklogStories
                                         stories={game.backlog_stories.clone()}
-                                        on_action={conn.send.clone()}
+                                        on_action={&conn.send}
                                     />
-                                    <StoryForm on_action={conn.send.clone()} />
+                                    <StoryForm on_action={&conn.send} />
                                 </>
                             }
 

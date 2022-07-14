@@ -15,8 +15,8 @@ pub fn player_entry(props: &Props) -> Html {
             class={classes!(
                 "py-2", "px-4", "border-b",
                 "text-slate-500",
-                is_current.then(||Some("font-semibold")),
-                is_current.then(||Some("text-lg")),
+                is_current.then_some("font-semibold"),
+                is_current.then_some("text-lg"),
             )}
         >
             {&props.player.user.name}
