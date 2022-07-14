@@ -14,7 +14,7 @@ install-deps:
   npm install -g tailwindcss
 
 dev:
-  #!/usr/bin/env bash
+  #!/usr/bin/env sh
   set -euxo pipefail
   {{just_executable()}} dev-backend & \
   {{just_executable()}} dev-frontend & \
@@ -24,7 +24,9 @@ dev-backend:
   cargo watch -w common -w backend -x check -x 'run --bin backend'
 
 dev-frontend:
-  cd frontend; trunk serve --public-url /
+  #!/usr/bin/env sh
+  cd frontend
+  trunk serve --public-url /
 
 build:
   {{just_executable()}} build-frontend
@@ -34,4 +36,6 @@ build-backend:
   cargo build --locked --release --bin backend
 
 build-frontend:
-  cd frontend; trunk build
+  #!/usr/bin/env sh
+  cd frontend
+  trunk build
