@@ -5,9 +5,10 @@ use axum::{
     },
     http::StatusCode,
     response::{IntoResponse, Response},
-    routing::{get, post},
+    routing::{delete, get, post},
     Json, Router,
 };
+use axum_auth::AuthBearer;
 use axum_extra::routing::SpaRouter;
 use common::{AppEvent, Game, GameAction, GameId, User, UserId};
 use futures::{sink::SinkExt, stream::StreamExt};
@@ -23,6 +24,9 @@ struct AppState {
     channels: RwLock<HashMap<GameId, broadcast::Sender<String>>>,
 }
 
+// Our secret secret
+struct AppSecret(Option<String>);
+
 #[tokio::main]
 async fn main() {
     tracing_subscriber::registry()
@@ -33,14 +37,18 @@ async fn main() {
         .init();
 
     let app_state = Arc::<AppState>::default();
+    let secret = std::env::var("API_SECRET").ok();
+    let secret = Arc::new(AppSecret(secret));
     let tracing_layer = TraceLayer::new_for_http()
         .make_span_with(DefaultMakeSpan::default().include_headers(false));
     let spa = SpaRouter::new("/assets", "dist");
     let app = Router::new()
         .merge(spa)
+        .route("/api/internal_state", delete(delete_internal_state))
         .route("/api/game", post(create_game))
         .route("/api/game/:game_id", get(ws_handler))
         .layer(tracing_layer)
+        .layer(Extension(secret))
         .layer(Extension(app_state));
     let port = std::env::var("PORT")
         .unwrap_or_else(|_| "3000".to_string())
@@ -52,6 +60,24 @@ async fn main() {
         .serve(app.into_make_service())
         .await
         .unwrap();
+}
+
+async fn delete_internal_state(
+    AuthBearer(token): AuthBearer,
+    Extension(state): Extension<Arc<AppState>>,
+    Extension(secret): Extension<Arc<AppSecret>>,
+) -> impl IntoResponse {
+    match &secret.0 {
+        Some(secret) if *secret == token => {
+            tokio::join! {
+                async { state.games.lock().await.clear() },
+                async { state.channels.write().await.clear() },
+            };
+            (StatusCode::OK, "State cleared successfully")
+        }
+        Some(_) => (StatusCode::UNAUTHORIZED, "Wrong token"),
+        None => (StatusCode::UNAUTHORIZED, "Secret not set"),
+    }
 }
 
 async fn create_game(
