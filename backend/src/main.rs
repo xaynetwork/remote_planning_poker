@@ -25,7 +25,7 @@ struct AppState {
 }
 
 // Our secret secret
-struct AppSecret(String);
+struct AppSecret(Option<String>);
 
 #[tokio::main]
 async fn main() {
@@ -37,14 +37,14 @@ async fn main() {
         .init();
 
     let app_state = Arc::<AppState>::default();
-    let secret = std::env::var("SECRET").expect("`SECRET` must be set.");
+    let secret = std::env::var("API_SECRET").ok();
     let secret = Arc::new(AppSecret(secret));
     let tracing_layer = TraceLayer::new_for_http()
         .make_span_with(DefaultMakeSpan::default().include_headers(false));
     let spa = SpaRouter::new("/assets", "dist");
     let app = Router::new()
         .merge(spa)
-        .route("/api/clear_state", delete(clear_state))
+        .route("/api/internal_state", delete(delete_internal_state))
         .route("/api/game", post(create_game))
         .route("/api/game/:game_id", get(ws_handler))
         .layer(tracing_layer)
@@ -62,18 +62,21 @@ async fn main() {
         .unwrap();
 }
 
-async fn clear_state(
+async fn delete_internal_state(
     AuthBearer(token): AuthBearer,
     Extension(state): Extension<Arc<AppState>>,
     Extension(secret): Extension<Arc<AppSecret>>,
 ) -> impl IntoResponse {
-    if secret.0 != token {
-        (StatusCode::UNAUTHORIZED, "Wrong token")
-    } else {
-        state.games.lock().await.clear();
-        state.channels.write().await.clear();
-
-        (StatusCode::OK, "State cleared successfully")
+    match &secret.0 {
+        Some(secret) if *secret == token => {
+            tokio::join! {
+                async { state.games.lock().await.clear() },
+                async { state.channels.write().await.clear() },
+            };
+            (StatusCode::OK, "State cleared successfully")
+        }
+        Some(_) => (StatusCode::UNAUTHORIZED, "Wrong token"),
+        None => (StatusCode::UNAUTHORIZED, "Secret not set"),
     }
 }
 
