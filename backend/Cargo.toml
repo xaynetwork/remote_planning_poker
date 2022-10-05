@@ -5,14 +5,14 @@ edition = "2021"
 license = "Apache-2.0"
 
 [dependencies]
-axum = { version = "0.5.4", features = ["ws", "headers"] }
-axum-auth = "0.2.0"
-axum-extra = { version = "0.3.1", features = ["spa"] }
+axum = { version = "0.5.16", features = ["ws", "headers"] }
+axum-auth = "0.3.0"
+axum-extra = { version = "0.3.7", features = ["spa"] }
 common = { path = "../common" }
-futures = "0.3.21"
-serde_json = "1.0.79"
-tokio = { version = "1", features = ["full"] }
-tower-http = { version = "0.3.0", features = ["fs", "trace", "cors"] }
-tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-uuid = { version = "1.0.0", features = ["serde", "v4"] }
+futures = "0.3.24"
+serde_json = "1.0.85"
+tokio = { version = "1.21.2", features = ["full"] }
+tower-http = { version = "0.3.4", features = ["fs", "trace", "cors"] }
+tracing = "0.1.36"
+tracing-subscriber = { version = "0.3.15", features = ["env-filter"] }
+uuid = { version = "1.1.2", features = ["serde", "v4"] }
