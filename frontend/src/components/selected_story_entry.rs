@@ -60,10 +60,7 @@ pub fn selected_story_entry(props: &Props) -> Html {
         Callback::from(move |_| on_action.emit(GameAction::VotingClosed))
     };
 
-    let is_admin = match props.players.get(&props.user_id) {
-        Some(player) if player.role == PlayerRole::Admin => true,
-        _ => false,
-    };
+    let is_admin = matches!(props.players.get(&props.user_id), Some(player) if player.role == PlayerRole::Admin);
 
     let can_accept = props.story.can_accept();
     let can_play_again = props.story.can_play_again();
@@ -72,7 +69,6 @@ pub fn selected_story_entry(props: &Props) -> Html {
     let closest = Vote::get_closest_vote(avrg).value();
 
     {
-        let closest = closest.clone();
         let final_estimate_handle = final_estimate_handle.clone();
         use_effect_with_deps(
             move |closest| {

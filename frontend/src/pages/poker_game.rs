@@ -18,6 +18,7 @@ pub struct Props {
     pub id: GameId,
 }
 
+#[allow(clippy::large_enum_variant)]
 enum GameState {
     Loading,
     Playing(Game),
@@ -64,8 +65,8 @@ pub fn poker_game(props: &Props) -> Html {
         // Receive message by depending on `ws.message`.
         use_effect_with_deps(
             move |message| {
-                if let Some(message) = &*message {
-                    let action = serde_json::from_str(&message).unwrap();
+                if let Some(message) = message {
+                    let action = serde_json::from_str(message).unwrap();
                     state.dispatch(action);
                 }
                 || ()

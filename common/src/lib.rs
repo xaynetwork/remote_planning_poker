@@ -20,6 +20,7 @@ pub enum GameAction {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
+#[allow(clippy::large_enum_variant)]
 pub enum AppEvent {
     CurrentState(Game),
     GameNotFound(GameId),
@@ -67,10 +68,7 @@ impl Game {
     }
 
     pub fn is_user_admin(&self, user_id: &UserId) -> bool {
-        match self.players.get(user_id) {
-            Some(player) if player.role == PlayerRole::Admin => true,
-            _ => false,
-        }
+        matches!(self.players.get(user_id), Some(player) if player.role == PlayerRole::Admin)
     }
 
     pub fn to_active_players(&self) -> IndexMap<UserId, Player> {
@@ -359,7 +357,7 @@ impl Vote {
 #[derive(PartialEq, Eq, Hash, Clone, Copy, Serialize, Deserialize, Debug, derive_more::Display)]
 pub struct UserId(Uuid);
 
-#[derive(PartialEq, Clone, Serialize, Deserialize, Debug)]
+#[derive(PartialEq, Eq, Clone, Serialize, Deserialize, Debug)]
 pub struct User {
     pub id: UserId,
     // TODO: move this maybe to Player struct to allow for different names in different games/teams
@@ -375,13 +373,13 @@ impl User {
     }
 }
 
-#[derive(PartialEq, Clone, Copy, Serialize, Deserialize, Debug)]
+#[derive(PartialEq, Eq, Clone, Copy, Serialize, Deserialize, Debug)]
 pub enum PlayerRole {
     Admin,
     Player,
 }
 
-#[derive(PartialEq, Clone, Serialize, Deserialize, Debug)]
+#[derive(PartialEq, Eq, Clone, Serialize, Deserialize, Debug)]
 pub struct Player {
     pub user: User,
     pub role: PlayerRole,

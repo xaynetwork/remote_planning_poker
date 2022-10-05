@@ -4,7 +4,7 @@ use yew::prelude::*;
 
 use crate::components::player_entry::PlayerEntry;
 
-#[derive(Clone, PartialEq, Properties)]
+#[derive(Clone, PartialEq, Eq, Properties)]
 pub struct Props {
     pub players: IndexMap<UserId, Player>,
 }

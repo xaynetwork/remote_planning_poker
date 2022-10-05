@@ -75,6 +75,7 @@ pub fn backlog_story_entry(props: &Props) -> Html {
     };
 
     let button_class = "m-1 p-1";
+    #[allow(clippy::let_unit_value)]
     let buttons = match *state {
         EntryState::Default => html! {
             <>

@@ -1,7 +1,7 @@
 use common::EstimatedStory;
 use yew::prelude::*;
 
-#[derive(Clone, Debug, PartialEq, Properties)]
+#[derive(Clone, Debug, PartialEq, Eq, Properties)]
 pub struct Props {
     pub story: EstimatedStory,
 }
