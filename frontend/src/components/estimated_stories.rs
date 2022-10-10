@@ -4,7 +4,7 @@ use yew::prelude::*;
 
 use crate::components::estimated_story_entry::EstimatedStoryEntry;
 
-#[derive(Clone, Debug, PartialEq, Properties)]
+#[derive(Clone, Debug, PartialEq, Eq, Properties)]
 pub struct Props {
     pub stories: IndexMap<StoryId, EstimatedStory>,
 }

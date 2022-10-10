@@ -26,7 +26,7 @@ pub fn use_game_connection(game_id: &GameId, user: &User) -> Connection {
     let protocol = &location.protocol.replace("http", "ws");
     let ws_url = [protocol, "//", base_url, "/api/game/", &game_id.to_string()].concat();
     let ws = use_web_socket_with_options(
-        ws_url.clone(),
+        ws_url,
         UseWebSocketOptions {
             reconnect_limit: Some(1000),
             ..Default::default()
@@ -35,7 +35,7 @@ pub fn use_game_connection(game_id: &GameId, user: &User) -> Connection {
 
     let send_msg = {
         let ws = ws.clone();
-        let user_id = user.id.clone();
+        let user_id = user.id;
         move |action: GameAction| {
             let msg = AppEvent::GameMessage(user_id, action);
             let msg = serde_json::to_string(&msg).unwrap();
@@ -44,7 +44,6 @@ pub fn use_game_connection(game_id: &GameId, user: &User) -> Connection {
     };
 
     {
-        let ws = ws.clone();
         let ws_state = ws.ready_state.clone();
         let send_msg = send_msg.clone();
         let user = user.clone();
@@ -93,7 +92,7 @@ async fn create_game_req(user: &User) -> Result<GameId, Error> {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Error {
     RequestError,
     DeserializeError,

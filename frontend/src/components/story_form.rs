@@ -13,12 +13,12 @@ pub struct Props {
 pub fn story_form(props: &Props) -> Html {
     let raw_form = use_state(|| "".to_string());
     let story_titles: Vec<String> = raw_form
-        .split("\n")
+        .split('\n')
         .map(|s| s.trim().to_string())
         .filter(|s| !s.is_empty())
         .collect();
     let stories_count = story_titles.len();
-    let disabled = !(stories_count > 0);
+    let disabled = stories_count == 0;
 
     let oninput = {
         let raw_form = raw_form.clone();

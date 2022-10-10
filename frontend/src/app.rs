@@ -7,7 +7,7 @@ use crate::{
     pages::{home::Home, page_not_found::PageNotFound, poker_game::PokerGame},
 };
 
-#[derive(Routable, PartialEq, Clone, Debug)]
+#[derive(Routable, PartialEq, Eq, Clone, Debug)]
 pub enum Route {
     #[at("/")]
     Home,
@@ -19,6 +19,7 @@ pub enum Route {
 }
 
 fn switch(routes: &Route) -> Html {
+    #[allow(clippy::let_unit_value)]
     match routes {
         Route::Home => {
             html! { <Home /> }

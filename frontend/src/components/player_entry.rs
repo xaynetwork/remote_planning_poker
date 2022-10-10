@@ -1,7 +1,7 @@
 use common::{Player, PlayerRole, User};
 use yew::prelude::*;
 
-#[derive(Clone, PartialEq, Properties)]
+#[derive(Clone, PartialEq, Eq, Properties)]
 pub struct Props {
     pub player: Player,
 }
