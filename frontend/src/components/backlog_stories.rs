@@ -4,13 +4,13 @@ use indexmap::IndexMap;
 use yew::prelude::*;
 
 #[derive(Clone, PartialEq, Properties)]
-pub struct Props {
-    pub stories: IndexMap<StoryId, BacklogStory>,
-    pub on_action: Callback<GameAction>,
+pub(crate) struct Props {
+    pub(crate) stories: IndexMap<StoryId, BacklogStory>,
+    pub(crate) on_action: Callback<GameAction>,
 }
 
 #[function_component(BacklogStories)]
-pub fn backlog_stories(props: &Props) -> Html {
+pub(crate) fn backlog_stories(props: &Props) -> Html {
     let stories = props
         .stories
         .iter()
@@ -25,7 +25,15 @@ pub fn backlog_stories(props: &Props) -> Html {
         })
         .collect::<Html>();
 
-    if !props.stories.is_empty() {
+    if props.stories.is_empty() {
+        html! {
+            <section class="mb-12">
+                <h3 class="text-center text-2xl text-slate-400">
+                    {"Add some stories to your backlog"}
+                </h3>
+            </section>
+        }
+    } else {
         html! {
             <section class="mb-12">
                 <h3 class="px-4 font-semibold text-slate-400">
@@ -34,14 +42,6 @@ pub fn backlog_stories(props: &Props) -> Html {
                 <ul class="my-2 bg-white shadow-md rounded list-none">
                     {stories}
                 </ul>
-            </section>
-        }
-    } else {
-        html! {
-            <section class="mb-12">
-                <h3 class="text-center text-2xl text-slate-400">
-                    {"Add some stories to your backlog"}
-                </h3>
             </section>
         }
     }

@@ -1,5 +1,5 @@
 use common::{AppEvent, Game, GameId, User};
-use std::{ops::Deref, rc::Rc};
+use std::rc::Rc;
 use yew::prelude::*;
 use yew_hooks::UseWebSocketReadyState;
 use yew_router::prelude::*;
@@ -14,8 +14,8 @@ use crate::{
 };
 
 #[derive(Clone, Debug, Eq, PartialEq, Properties)]
-pub struct Props {
-    pub id: GameId,
+pub(crate) struct Props {
+    pub(crate) id: GameId,
 }
 
 #[allow(clippy::large_enum_variant)]
@@ -30,12 +30,12 @@ impl Reducible for GameState {
 
     /// Reducer Function
     fn reduce(self: Rc<Self>, message: Self::Action) -> Rc<Self> {
-        match self.deref() {
+        match &*self {
             GameState::Loading => match message {
                 AppEvent::CurrentState(game) => GameState::Playing(game),
                 AppEvent::GameNotFound(_) => GameState::NotFound,
                 // TODO: this shouldn't happen, so figure out how to handle it
-                _ => GameState::Loading,
+                AppEvent::GameMessage(_, _) => GameState::Loading,
             },
             GameState::Playing(game) => {
                 let mut game = game.clone();
@@ -54,7 +54,7 @@ impl Reducible for GameState {
 }
 
 #[function_component(PokerGame)]
-pub fn poker_game(props: &Props) -> Html {
+pub(crate) fn poker_game(props: &Props) -> Html {
     let user = use_context::<User>().expect("no user ctx found");
     let conn = use_game_connection(&props.id, &user);
     let state = use_reducer(|| GameState::Loading);

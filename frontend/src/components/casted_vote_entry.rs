@@ -3,14 +3,14 @@ use common::{Player, Vote};
 use yew::prelude::*;
 
 #[derive(Clone, Debug, PartialEq, Eq, Properties)]
-pub struct Props {
-    pub vote: Option<Vote>,
-    pub player: Player,
-    pub is_revealed: bool,
+pub(crate) struct Props {
+    pub(crate) vote: Option<Vote>,
+    pub(crate) player: Player,
+    pub(crate) is_revealed: bool,
 }
 
 #[function_component(CastedVoteEntry)]
-pub fn casted_vote_entry(props: &Props) -> Html {
+pub(crate) fn casted_vote_entry(props: &Props) -> Html {
     let is_not_revealed = !props.is_revealed;
     html! {
         <li class={classes!("m-2", "pt-10", "text-center")}>

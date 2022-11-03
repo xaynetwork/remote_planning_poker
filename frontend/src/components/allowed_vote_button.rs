@@ -2,14 +2,14 @@ use common::Vote;
 use yew::prelude::*;
 
 #[derive(Clone, PartialEq, Properties)]
-pub struct Props {
-    pub vote: Vote,
+pub(crate) struct Props {
+    pub(crate) vote: Vote,
     #[prop_or_else(Callback::noop)]
-    pub onclick: Callback<MouseEvent>,
+    pub(crate) onclick: Callback<MouseEvent>,
 }
 
 #[function_component(AllowedVoteButton)]
-pub fn allowed_vote_button(props: &Props) -> Html {
+pub(crate) fn allowed_vote_button(props: &Props) -> Html {
     let onclick = &props.onclick;
     html! {
         <button

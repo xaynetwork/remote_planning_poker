@@ -6,12 +6,12 @@ use crate::components::form_input::FormInput;
 use crate::Route;
 
 #[derive(PartialEq, Properties, Clone)]
-pub struct LoginProps {
-    pub onsubmit: Callback<String>,
+pub(crate) struct LoginProps {
+    pub(crate) onsubmit: Callback<String>,
 }
 
 #[function_component(Login)]
-pub fn login(props: &LoginProps) -> Html {
+pub(crate) fn login(props: &LoginProps) -> Html {
     let route: Route = use_route().unwrap_or_default();
     let onkeypress = {
         let onsubmit = props.onsubmit.clone();
@@ -24,7 +24,7 @@ pub fn login(props: &LoginProps) -> Html {
 
                 if !trim_val.is_empty() {
                     input.set_value("");
-                    onsubmit.emit(trim_val.to_string())
+                    onsubmit.emit(trim_val.to_string());
                 }
             }
         })

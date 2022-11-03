@@ -10,13 +10,13 @@ use yew_hooks::{
 // const API_BASE_URL: &str = dotenv!("API_BASE_URL");
 
 #[derive(Clone, PartialEq)]
-pub struct Connection {
-    pub ready_state: UseWebSocketReadyState,
-    pub message: Option<String>,
-    pub send: Callback<GameAction>,
+pub(crate) struct Connection {
+    pub(crate) ready_state: UseWebSocketReadyState,
+    pub(crate) message: Option<String>,
+    pub(crate) send: Callback<GameAction>,
 }
 
-pub fn use_game_connection(game_id: &GameId, user: &User) -> Connection {
+pub(crate) fn use_game_connection(game_id: &GameId, user: &User) -> Connection {
     let location = use_location();
     let base_url = if &location.hostname == "localhost" {
         "localhost:3000"
@@ -73,7 +73,7 @@ pub fn use_game_connection(game_id: &GameId, user: &User) -> Connection {
     }
 }
 
-pub fn use_crate_game_req(user: &User) -> UseAsyncHandle<GameId, Error> {
+pub(crate) fn use_crate_game_req(user: &User) -> UseAsyncHandle<GameId, Error> {
     let user = user.clone();
     use_async(async move { create_game_req(&user).await })
 }
@@ -93,7 +93,7 @@ async fn create_game_req(user: &User) -> Result<GameId, Error> {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum Error {
+pub(crate) enum Error {
     RequestError,
     DeserializeError,
 }

@@ -8,15 +8,15 @@ use crate::components::{
 };
 
 #[derive(Clone, Debug, PartialEq, Properties)]
-pub struct Props {
-    pub story: SelectedStory,
-    pub user_id: UserId,
-    pub players: IndexMap<UserId, Player>,
-    pub on_action: Callback<GameAction>,
+pub(crate) struct Props {
+    pub(crate) story: SelectedStory,
+    pub(crate) user_id: UserId,
+    pub(crate) players: IndexMap<UserId, Player>,
+    pub(crate) on_action: Callback<GameAction>,
 }
 
 #[function_component(SelectedStoryEntry)]
-pub fn selected_story_entry(props: &Props) -> Html {
+pub(crate) fn selected_story_entry(props: &Props) -> Html {
     let final_estimate_handle = use_state(|| 0_i32);
     let votes = props
         .players
@@ -24,7 +24,7 @@ pub fn selected_story_entry(props: &Props) -> Html {
         .filter(|player| player.active)
         .map(|player| {
             let key = player.user.id.to_string();
-            let vote = props.story.votes.get(&player.user.id).cloned();
+            let vote = props.story.votes.get(&player.user.id).copied();
             let is_revealed =
                 (props.story.votes_revealed || props.user_id == player.user.id) && vote.is_some();
             let player = player.clone();

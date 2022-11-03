@@ -2,12 +2,12 @@ use common::{Player, PlayerRole, User};
 use yew::prelude::*;
 
 #[derive(Clone, PartialEq, Eq, Properties)]
-pub struct Props {
-    pub player: Player,
+pub(crate) struct Props {
+    pub(crate) player: Player,
 }
 
 #[function_component(PlayerEntry)]
-pub fn player_entry(props: &Props) -> Html {
+pub(crate) fn player_entry(props: &Props) -> Html {
     let user = use_context::<User>().expect("no user ctx found");
     let is_current = user.id == props.player.user.id;
     html! {

@@ -1,6 +1,5 @@
 use common::User;
 use gloo_storage::{LocalStorage, Storage};
-use std::ops::Deref;
 use yew::prelude::*;
 
 use crate::components::login::Login;
@@ -8,25 +7,25 @@ use crate::components::login::Login;
 const STORAGE_KEY: &str = "yew.user.self";
 
 #[derive(Properties, PartialEq)]
-pub struct Props {
-    pub children: Children,
+pub(crate) struct Props {
+    pub(crate) children: Children,
 }
 
 #[function_component(UserProvider)]
-pub fn user_provider(props: &Props) -> Html {
+pub(crate) fn user_provider(props: &Props) -> Html {
     let user = use_state(|| LocalStorage::get(STORAGE_KEY).ok() as Option<User>);
 
     {
         let user = user.clone();
         use_effect_with_deps(
             move |user| {
-                if let Some(user) = user.deref() {
+                if let Some(user) = &**user {
                     LocalStorage::set(STORAGE_KEY, user).expect("failed to set");
                 }
                 || ()
             },
             user,
-        )
+        );
     };
 
     let onsubmit = {
@@ -38,7 +37,7 @@ pub fn user_provider(props: &Props) -> Html {
     };
 
     html! {
-        if let Some(user) = user.deref() {
+        if let Some(user) = &*user {
             <ContextProvider<User> context={(*user).clone()}>
               { props.children.clone() }
             </ContextProvider<User>>

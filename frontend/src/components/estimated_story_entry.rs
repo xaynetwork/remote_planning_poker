@@ -2,12 +2,12 @@ use common::EstimatedStory;
 use yew::prelude::*;
 
 #[derive(Clone, Debug, PartialEq, Eq, Properties)]
-pub struct Props {
-    pub story: EstimatedStory,
+pub(crate) struct Props {
+    pub(crate) story: EstimatedStory,
 }
 
 #[function_component(EstimatedStoryEntry)]
-pub fn estimated_story_entry(props: &Props) -> Html {
+pub(crate) fn estimated_story_entry(props: &Props) -> Html {
     let estimation = &props.story.estimate.value();
 
     html! {

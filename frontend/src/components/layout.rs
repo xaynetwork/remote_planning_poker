@@ -2,12 +2,12 @@ use yew::prelude::*;
 use yew_hooks::use_location;
 
 #[derive(Properties, PartialEq)]
-pub struct LayoutProps {
-    pub children: Children,
+pub(crate) struct LayoutProps {
+    pub(crate) children: Children,
 }
 
 #[function_component(Layout)]
-pub fn layout(props: &LayoutProps) -> Html {
+pub(crate) fn layout(props: &LayoutProps) -> Html {
     let location = use_location();
     let is_localhost = location.hostname == "localhost";
     let assets_path = if is_localhost { "/" } else { "/assets/" };

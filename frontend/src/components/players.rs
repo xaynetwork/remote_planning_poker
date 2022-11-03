@@ -5,12 +5,12 @@ use yew::prelude::*;
 use crate::components::player_entry::PlayerEntry;
 
 #[derive(Clone, PartialEq, Eq, Properties)]
-pub struct Props {
-    pub players: IndexMap<UserId, Player>,
+pub(crate) struct Props {
+    pub(crate) players: IndexMap<UserId, Player>,
 }
 
 #[function_component(Players)]
-pub fn players(props: &Props) -> Html {
+pub(crate) fn players(props: &Props) -> Html {
     let players = props
         .players
         .iter()
