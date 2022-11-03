@@ -1,3 +1,19 @@
+#![forbid(unsafe_code, unsafe_op_in_unsafe_fn)]
+#![deny(
+    clippy::future_not_send,
+    clippy::pedantic,
+    noop_method_call,
+    rust_2018_idioms,
+    unused_qualifications
+)]
+#![warn(unreachable_pub, rustdoc::missing_crate_level_docs)]
+#![allow(
+    clippy::items_after_statements,
+    clippy::missing_errors_doc,
+    clippy::module_name_repetitions,
+    clippy::must_use_candidate
+)]
+
 use axum::{
     extract::{
         ws::{Message, WebSocket},
@@ -96,6 +112,7 @@ async fn create_game(
     (StatusCode::CREATED, Json(id))
 }
 
+#[allow(clippy::unused_async)]
 async fn ws_handler(
     ws: WebSocketUpgrade,
     Path(game_id): Path<GameId>,
@@ -111,12 +128,15 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>, game_id: GameId)
     let api_response = if let Some(game) = state.games.lock().await.get(&game_id) {
         AppEvent::CurrentState(game.clone())
     } else {
+        tracing::warn!("game not found: {:?}", game_id);
         AppEvent::GameNotFound(game_id)
     };
 
     // send the current state (or game not found) to the player who joined
     let api_response = serde_json::to_string(&api_response).unwrap();
-    let _ = ws_sender.send(Message::Text(api_response)).await;
+    if let Err(err) = ws_sender.send(Message::Text(api_response)).await {
+        tracing::error!("error sending game state: {:?}", err);
+    }
 
     let tx = {
         let channels = state.channels.read().await;

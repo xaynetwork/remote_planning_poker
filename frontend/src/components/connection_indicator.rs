@@ -1,15 +1,15 @@
 use yew::prelude::*;
 
 #[derive(Properties, PartialEq)]
-pub struct ConnectionIndicatorProps {
-    pub label: String,
-    pub bg_class: String,
+pub(crate) struct ConnectionIndicatorProps {
+    pub(crate) label: String,
+    pub(crate) bg_class: String,
     #[prop_or_else(Callback::noop)]
-    pub onclick: Callback<MouseEvent>,
+    pub(crate) onclick: Callback<MouseEvent>,
 }
 
 #[function_component(ConnectionIndicator)]
-pub fn connection_indicator(props: &ConnectionIndicatorProps) -> Html {
+pub(crate) fn connection_indicator(props: &ConnectionIndicatorProps) -> Html {
     let onclick = &props.onclick;
     html! {
         <div

@@ -1,3 +1,19 @@
+#![forbid(unsafe_code, unsafe_op_in_unsafe_fn)]
+#![deny(
+    clippy::future_not_send,
+    clippy::pedantic,
+    noop_method_call,
+    rust_2018_idioms,
+    unused_qualifications
+)]
+#![warn(unreachable_pub, rustdoc::missing_crate_level_docs)]
+#![allow(
+    clippy::items_after_statements,
+    clippy::missing_errors_doc,
+    clippy::module_name_repetitions,
+    clippy::must_use_candidate
+)]
+
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
@@ -86,14 +102,14 @@ impl Game {
             match action {
                 GameAction::StoriesAdded(stories) if is_admin => self.add_stories(stories),
                 GameAction::StoryUpdated(story_id, story_info) if is_admin => {
-                    self.update_story(story_id, story_info)
+                    self.update_story(story_id, story_info);
                 }
                 GameAction::StoryPositionChanged(story_id, idx) => {
-                    self.change_story_position(story_id, idx)
+                    self.change_story_position(story_id, idx);
                 }
                 GameAction::StoryRemoved(story_id) if is_admin => self.remove_story(story_id),
                 GameAction::VotingOpened(story_id) if is_admin => {
-                    self.open_story_for_voting(story_id)
+                    self.open_story_for_voting(story_id);
                 }
                 GameAction::VotingClosed if is_admin => self.close_story_for_voting(),
                 GameAction::VotesRevealed if is_admin => self.reveal_votes(),
@@ -119,7 +135,7 @@ impl Game {
         self.players
             .entry(user.id)
             .or_insert_with(|| Player::new(user, PlayerRole::Player))
-            .active = true
+            .active = true;
     }
 
     fn remove_player(&mut self, user_id: &UserId) {
@@ -302,7 +318,8 @@ impl SelectedStory {
             0.
         } else {
             let val = self.votes.iter().map(|(_, vote)| vote.0).sum::<i32>();
-            val as f32 / self.votes.len() as f32
+            #[allow(clippy::cast_precision_loss)]
+            (val as f32 / self.votes.len() as f32)
         }
     }
 }
@@ -337,21 +354,24 @@ impl Vote {
         VOTES
     }
 
+    #[allow(clippy::missing_panics_doc)]
     pub fn get_allowed_votes() -> [Vote; 10] {
-        VOTES.map(|val| Vote::new(val).unwrap())
+        VOTES.map(|val| Vote::new(val).unwrap(/* safe because we iterate over VOTES */))
     }
 
+    #[allow(clippy::missing_panics_doc)]
     pub fn get_closest_vote(value: &f32) -> Vote {
         let closest = VOTES
             .iter()
             .reduce(|prev, curr| {
+                #[allow(clippy::cast_precision_loss)]
                 if (*curr as f32 - value).abs() < (*prev as f32 - value).abs() {
                     curr
                 } else {
                     prev
                 }
             })
-            .unwrap();
+            .unwrap(/* safe because we iterate over VOTES */);
         Vote(*closest)
     }
 }

@@ -4,12 +4,12 @@ use yew::prelude::*;
 use crate::components::allowed_vote_button::AllowedVoteButton;
 
 #[derive(Clone, PartialEq, Properties)]
-pub struct Props {
-    pub on_vote_click: Callback<Vote>,
+pub(crate) struct Props {
+    pub(crate) on_vote_click: Callback<Vote>,
 }
 
 #[function_component(AllowedVotes)]
-pub fn allowed_votes(props: &Props) -> Html {
+pub(crate) fn allowed_votes(props: &Props) -> Html {
     let allowed_votes = Vote::get_allowed_votes()
         .iter()
         .map(|vote| {

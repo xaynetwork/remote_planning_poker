@@ -1,18 +1,18 @@
 use yew::prelude::*;
 
 #[derive(PartialEq, Properties, Clone)]
-pub struct FormTextareaProps {
+pub(crate) struct FormTextareaProps {
     #[prop_or(1)]
-    pub rows: usize,
-    pub label: String,
+    pub(crate) rows: usize,
+    pub(crate) label: String,
     #[prop_or_default]
-    pub value: String,
+    pub(crate) value: String,
     #[prop_or_else(Callback::noop)]
-    pub oninput: Callback<InputEvent>,
+    pub(crate) oninput: Callback<InputEvent>,
 }
 
 #[function_component(FormTextarea)]
-pub fn form_textarea(props: &FormTextareaProps) -> Html {
+pub(crate) fn form_textarea(props: &FormTextareaProps) -> Html {
     html! {
         <div class={classes!("w-full")}>
             <label

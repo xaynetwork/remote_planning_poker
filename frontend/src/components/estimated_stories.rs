@@ -5,12 +5,12 @@ use yew::prelude::*;
 use crate::components::estimated_story_entry::EstimatedStoryEntry;
 
 #[derive(Clone, Debug, PartialEq, Eq, Properties)]
-pub struct Props {
-    pub stories: IndexMap<StoryId, EstimatedStory>,
+pub(crate) struct Props {
+    pub(crate) stories: IndexMap<StoryId, EstimatedStory>,
 }
 
 #[function_component(EstimatedStories)]
-pub fn estimated_stories(props: &Props) -> Html {
+pub(crate) fn estimated_stories(props: &Props) -> Html {
     let stories = props
         .stories
         .iter()
@@ -24,13 +24,13 @@ pub fn estimated_stories(props: &Props) -> Html {
         })
         .collect::<Html>();
 
-    if !props.stories.is_empty() {
+    if props.stories.is_empty() {
+        html! {}
+    } else {
         html! {
             <ul class="mb-12 bg-white shadow-sm rounded list-none">
                 {stories}
             </ul>
         }
-    } else {
-        html! {}
     }
 }

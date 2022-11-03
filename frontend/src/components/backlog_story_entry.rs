@@ -2,13 +2,16 @@ use common::{BacklogStory, GameAction, StoryInfo};
 use web_sys::HtmlInputElement;
 use yew::prelude::*;
 
-use crate::components::{form_input::FormInput, icons::*};
+use crate::components::{
+    form_input::FormInput,
+    icons::{CancelIcon, EditIcon, GoDownIcon, GoUpIcon, RemoveIcon, SelectIcon},
+};
 
 #[derive(Clone, Debug, PartialEq, Properties)]
-pub struct Props {
-    pub story: BacklogStory,
-    pub idx: usize,
-    pub on_action: Callback<GameAction>,
+pub(crate) struct Props {
+    pub(crate) story: BacklogStory,
+    pub(crate) idx: usize,
+    pub(crate) on_action: Callback<GameAction>,
 }
 
 enum EntryState {
@@ -18,7 +21,7 @@ enum EntryState {
 }
 
 #[function_component(BacklogStoryEntry)]
-pub fn backlog_story_entry(props: &Props) -> Html {
+pub(crate) fn backlog_story_entry(props: &Props) -> Html {
     let state = use_state(|| EntryState::Default);
 
     let on_select = {

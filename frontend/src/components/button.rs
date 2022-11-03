@@ -1,16 +1,16 @@
 use yew::prelude::*;
 
 #[derive(PartialEq, Properties, Clone)]
-pub struct Props {
+pub(crate) struct Props {
     #[prop_or_default]
-    pub disabled: bool,
+    pub(crate) disabled: bool,
     #[prop_or_else(Callback::noop)]
-    pub onclick: Callback<MouseEvent>,
-    pub children: Children,
+    pub(crate) onclick: Callback<MouseEvent>,
+    pub(crate) children: Children,
 }
 
 #[function_component(Button)]
-pub fn button(props: &Props) -> Html {
+pub(crate) fn button(props: &Props) -> Html {
     let disabled = props.disabled;
     let onclick = &props.onclick;
     let children = props.children.clone();

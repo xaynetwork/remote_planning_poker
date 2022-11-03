@@ -5,12 +5,12 @@ use yew::prelude::*;
 use crate::components::{button::Button, form_textarea::FormTextarea};
 
 #[derive(PartialEq, Properties, Clone)]
-pub struct Props {
-    pub on_action: Callback<GameAction>,
+pub(crate) struct Props {
+    pub(crate) on_action: Callback<GameAction>,
 }
 
 #[function_component(StoryForm)]
-pub fn story_form(props: &Props) -> Html {
+pub(crate) fn story_form(props: &Props) -> Html {
     let raw_form = use_state(|| "".to_string());
     let story_titles: Vec<String> = raw_form
         .split('\n')

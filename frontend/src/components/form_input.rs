@@ -1,19 +1,19 @@
 use yew::prelude::*;
 
 #[derive(PartialEq, Properties, Clone)]
-pub struct FormInputProps {
+pub(crate) struct FormInputProps {
     #[prop_or_default]
-    pub label: String,
+    pub(crate) label: String,
     #[prop_or_default]
-    pub placeholder: String,
+    pub(crate) placeholder: String,
     #[prop_or_default]
-    pub value: String,
+    pub(crate) value: String,
     #[prop_or_else(Callback::noop)]
-    pub onkeypress: Callback<KeyboardEvent>,
+    pub(crate) onkeypress: Callback<KeyboardEvent>,
 }
 
 #[function_component(FormInput)]
-pub fn form_input(props: &FormInputProps) -> Html {
+pub(crate) fn form_input(props: &FormInputProps) -> Html {
     html! {
         <div class={classes!("w-full")}>
             if !props.label.is_empty() {
