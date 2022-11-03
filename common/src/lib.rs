@@ -171,7 +171,9 @@ impl Game {
 
     fn cast_vote(&mut self, player_id: UserId, vote: Vote) {
         if let Some(ref mut story) = self.selected_story {
-            story.add_vote(player_id, vote);
+            if !story.votes_revealed {
+                story.add_vote(player_id, vote);
+            }
         }
     }
 
