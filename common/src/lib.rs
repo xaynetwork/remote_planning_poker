@@ -170,15 +170,10 @@ impl Game {
     }
 
     fn cast_vote(&mut self, player_id: UserId, vote: Vote) {
-        if matches!(
-            &self.selected_story,
-            Some(story) if !story.votes_revealed
-        ) {
-            let story = self
-                .selected_story
-                .as_mut()
-                .unwrap(/* safe because of check above */);
-            story.add_vote(player_id, vote);
+        if let Some(ref mut story) = self.selected_story {
+            if !story.votes_revealed {
+                story.add_vote(player_id, vote);
+            }
         }
     }
 
