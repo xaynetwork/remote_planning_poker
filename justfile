@@ -28,6 +28,9 @@ dev-frontend:
   cd frontend
   trunk serve --public-url /
 
+check: 
+  cargo clippy --all-targets --locked
+
 build:
   {{just_executable()}} build-frontend
   {{just_executable()}} build-backend
