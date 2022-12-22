@@ -1,4 +1,4 @@
-export RUST_NIGHTLY := 'nightly-2022-11-03'
+export RUST_NIGHTLY := 'nightly-2022-12-15'
 
 default:
     just --list
