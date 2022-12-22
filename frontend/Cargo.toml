@@ -7,7 +7,7 @@ rust-version = { workspace = true }
 
 [dependencies]
 common = { path = "../common" }
-gloo-net = "0.2.4"
+gloo-net = "0.2.5"
 gloo-storage = "0.2.2"
 indexmap = { workspace = true }
 log = "0.4.17"
