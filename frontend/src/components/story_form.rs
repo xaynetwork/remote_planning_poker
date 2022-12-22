@@ -11,7 +11,7 @@ pub(crate) struct Props {
 
 #[function_component(StoryForm)]
 pub(crate) fn story_form(props: &Props) -> Html {
-    let raw_form = use_state(|| "".to_string());
+    let raw_form = use_state(String::new);
     let story_titles: Vec<String> = raw_form
         .split('\n')
         .map(|s| s.trim().to_string())
@@ -33,7 +33,7 @@ pub(crate) fn story_form(props: &Props) -> Html {
         let on_action = props.on_action.clone();
 
         Callback::from(move |_| {
-            raw_form.set("".to_string());
+            raw_form.set(String::new());
             let stories = story_titles
                 .iter()
                 .map(|title| {

@@ -5,9 +5,9 @@ members = ["backend", "common", "frontend"]
 version = "0.1.0"
 edition = "2021"
 license = "Apache-2.0"
-rust-version = "1.64.0"
+rust-version = "1.65.0"
 
 [workspace.dependencies]
 indexmap = { version = "1.9.1", features = ["serde"] }
 serde_json = "1.0.87"
-uuid = { version = "1.2.1", features = ["serde", "v4"] }
+uuid = { version = "1.2.2", features = ["serde", "v4"] }
