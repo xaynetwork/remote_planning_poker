@@ -1,5 +1,3 @@
-export RUST_NIGHTLY := 'nightly-2022-12-15'
-
 default:
     just --list
 
@@ -31,7 +29,7 @@ dev-frontend:
     trunk serve --public-url /
 
 fmt *args:
-    cargo +"$RUST_NIGHTLY" fmt --all -- {{ args }}; \
+    cargo +nightly fmt --all -- {{ args }}; \
     cargo sort --grouped --workspace {{ args }}
 
 check: 
