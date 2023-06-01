@@ -16,7 +16,6 @@ permissions:
 
 env:
   DENY_WARNINGS: false
-  DOCKER_REPO: ${{ secrets.AWS_ECR_REPOSITORY }}
   DOCKER_REPO_BASE_URL: ${{ vars.DOCKER_REPO_BASE_URL }}
 
 jobs:
@@ -103,7 +102,7 @@ jobs:
             echo "$FQ_DOCKER_NAME"
           }
 
-          IMAGE_NAME=($(create_image "remote-poker" | tail -n1))
+          IMAGE_NAME=($(create_image "remote-planning-poker" | tail -n1))
           echo "IMAGE_NAME=${IMAGE_NAME}" >> $GITHUB_ENV
 
       - name: Login to Amazon ECR
