@@ -19,6 +19,7 @@ permissions:
 env:
   DENY_WARNINGS: false
   DOCKER_REPO_BASE_URL: ${{ vars.DOCKER_REPO_BASE_URL }}
+  tag: "test" 
 
 jobs:
   rust-build:
@@ -91,11 +92,11 @@ jobs:
       - name: Create image
         run: |
           tar -xvf remote_planning_poker.tar
-          TAG = "test"
-          if [ -z "$TAG" ]; then
-            TAG=$(git describe --tags --always)
-          fi
-          echo "TAG=${TAG}" >> $GITHUB_ENV
+          # TAG=${{ github.event.inputs.tag }}
+          # if [ -z "$TAG" ]; then
+          #   TAG=$(git describe --tags --always)
+          # fi
+          echo "TAG="test"" >> $GITHUB_ENV
 
           function create_image() {
             cd "remote_planning_poker/$1"
