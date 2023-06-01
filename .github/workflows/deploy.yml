@@ -92,11 +92,11 @@ jobs:
       - name: Create image
         run: |
           tar -xvf remote_planning_poker.tar
-          # TAG=${{ github.event.inputs.tag }}
-          # if [ -z "$TAG" ]; then
-          #   TAG=$(git describe --tags --always)
-          # fi
-          echo "TAG="test"" >> $GITHUB_ENV
+          TAG=${{ env.tag }}
+          if [ -z "$TAG" ]; then
+            TAG=$(git describe --tags --always)
+          fi
+          echo "TAG=${TAG}" >> $GITHUB_ENV
 
           function create_image() {
             cd "remote_planning_poker/$1"
