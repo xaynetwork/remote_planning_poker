@@ -1,9 +1,11 @@
-name: Build
+name: Planning Poker Release
 
 on:
-  push:
-    branches:
-      - main
+  workflow_dispatch:
+    inputs:
+      tag:
+        required: false
+        description: a tag that will be used for identifying this version (aws-ecr-repo/repo-name:$TAG)
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -12,15 +14,22 @@ concurrency:
 permissions:
   contents: read
 
+env:
+  DENY_WARNINGS: false
+  DOCKER_REPO_BASE_URL: ${{ vars.DOCKER_REPO_BASE_URL }}
+
 jobs:
   rust-build:
     runs-on: hetzner-pm
     container:
-      image: xaynetci/yellow:v6
+      image: xaynetci/yellow:v13
     timeout-minutes: 45
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - name: Checkout repository
-        uses: actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8 # v3.1.0
+        uses: actions/checkout@24cb9080177205b6e8c946b17badbe402adc938f # v3.4.0
 
       - uses: Swatinem/rust-cache@359a70e43a0bb8a13953b04a90f76428b4959bb6 # v2.2.0
         with:
@@ -50,43 +59,56 @@ jobs:
 
   docker-build:
     runs-on: ubuntu-22.04
-    timeout-minutes: 30
+    timeout-minutes: 10
     needs: [rust-build]
+    permissions:
+      id-token: write
+      contents: read
     steps:
       - name: Checkout repository
-        uses: actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8 # v3.1.0
+        uses: actions/checkout@24cb9080177205b6e8c946b17badbe402adc938f # v3.4.0
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@e1e17a757e536f70e52b5a12b2e8d1d1c60e04ef # v2.0.0
+        with:
+          role-to-assume: ${{ secrets.AWS_ECR_REPOSITORY_OIDC_ROLE }}
+          aws-region: eu-central-1
 
       - name: Setup Docker Buildx
-        uses: docker/setup-buildx-action@8c0edbc76e98fa90f69d9a2c020dcb50019dc325 # v2.2.1
+        uses: docker/setup-buildx-action@4b4e9c3e2d4531116a6f8ba8e71fc6e2cb6e6c8c # v2.5.0
 
       - name: Download artifacts
         id: artifacts
-        uses: actions/download-artifact@9782bd6a9848b53b110e712e20e42d89988822b7 # v3.0.1
+        uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a # v3.0.2
         with:
           name: remote_planning_poker
 
       - name: Untar files
         run: tar -xvf remote_planning_poker.tar
 
-      - name: Create docker image
+      - name: Create image
         run: |
-          TAG="$(git rev-parse --short HEAD)"
-          if [[ "${GITHUB_REF#refs/heads/}" != "" ]]; then
-            #TAG="$(echo "branch-${GITHUB_REF#refs/heads/}" | tr '[:upper:]' '[:lower:]')"
-            TAG="branch-${GITHUB_REF#refs/heads/}"
+          tar -xvf remote_planning_poker.tar
+          TAG=${{ github.event.inputs.tag }}
+          if [ -z "$TAG" ]; then
+            TAG=$(git describe --tags --always)
           fi
-          IMAGE_NAME="xaynetci/xayn_estimation:$TAG"
-
-          docker build -t "${IMAGE_NAME}" .
-          echo "IMAGE_NAME=${IMAGE_NAME}" >> $GITHUB_ENV
           echo "TAG=${TAG}" >> $GITHUB_ENV
 
-      - name: Login to Docker Hub
-        uses: docker/login-action@f4ef78c080cd8ba55a85445d5b36e214a81df20a # v2.1.0
-        with:
-          username: "${{ secrets.DOCKERHUB_USERNAME }}"
-          password: "${{ secrets.DOCKERHUB_TOKEN }}"
+          function create_image() {
+            cd "remote_planning_poker/$1"
+            FQ_DOCKER_NAME="${DOCKER_REPO_BASE_URL}/$1:${TAG}"
+            docker build -t "$FQ_DOCKER_NAME" . 1>&2
+            echo "$FQ_DOCKER_NAME"
+          }
 
+          IMAGE_NAME=($(create_image "remote-planning-poker" | tail -n1))
+          echo "IMAGE_NAME=${IMAGE_NAME}" >> $GITHUB_ENV
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+  
       - name: docker push
         id: docker-push
-        run: docker push "${IMAGE_NAME}"
+        run: docker push "$IMAGE_NAME"
