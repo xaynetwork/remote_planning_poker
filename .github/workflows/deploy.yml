@@ -1,11 +1,13 @@
 name: Planning Poker Release
 
 on:
-  workflow_dispatch:
-    inputs:
-      tag:
-        required: false
-        description: a tag that will be used for identifying this version (aws-ecr-repo/repo-name:$TAG)
+  pull_request:
+
+  # workflow_dispatch:
+  #   inputs:
+  #     tag:
+  #       required: false
+  #       description: a tag that will be used for identifying this version (aws-ecr-repo/repo-name:$TAG)
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -17,6 +19,7 @@ permissions:
 env:
   DENY_WARNINGS: false
   DOCKER_REPO_BASE_URL: ${{ vars.DOCKER_REPO_BASE_URL }}
+  tag: "test" 
 
 jobs:
   rust-build:
@@ -89,7 +92,8 @@ jobs:
       - name: Create image
         run: |
           tar -xvf remote_planning_poker.tar
-          TAG=${{ github.event.inputs.tag }}
+          # TAG=${{ github.event.inputs.tag }}
+          TAG = ${{env.tag}}
           if [ -z "$TAG" ]; then
             TAG=$(git describe --tags --always)
           fi
