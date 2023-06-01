@@ -19,7 +19,6 @@ permissions:
 env:
   DENY_WARNINGS: false
   DOCKER_REPO_BASE_URL: ${{ vars.DOCKER_REPO_BASE_URL }}
-  tag: "test" 
 
 jobs:
   rust-build:
@@ -92,8 +91,7 @@ jobs:
       - name: Create image
         run: |
           tar -xvf remote_planning_poker.tar
-          # TAG=${{ github.event.inputs.tag }}
-          TAG = ${{env.tag}}
+          TAG = "test"
           if [ -z "$TAG" ]; then
             TAG=$(git describe --tags --always)
           fi
