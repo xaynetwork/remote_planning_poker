@@ -2,7 +2,7 @@ use common::{AppEvent, GameAction, GameId, User};
 use gloo_net::http::Request;
 use yew::prelude::*;
 use yew_hooks::{
-    use_async, use_location, use_web_socket_with_options, UseAsyncHandle, UseWebSocketOptions,
+    use_async, use_location, use_websocket_with_options, UseAsyncHandle, UseWebSocketOptions,
     UseWebSocketReadyState,
 };
 
@@ -16,6 +16,7 @@ pub(crate) struct Connection {
     pub(crate) send: Callback<GameAction>,
 }
 
+#[hook]
 pub(crate) fn use_game_connection(game_id: &GameId, user: &User) -> Connection {
     let location = use_location();
     let base_url = if &location.hostname == "localhost" {
@@ -25,7 +26,7 @@ pub(crate) fn use_game_connection(game_id: &GameId, user: &User) -> Connection {
     };
     let protocol = &location.protocol.replace("http", "ws");
     let ws_url = [protocol, "//", base_url, "/api/game/", &game_id.to_string()].concat();
-    let ws = use_web_socket_with_options(
+    let ws = use_websocket_with_options(
         ws_url,
         UseWebSocketOptions {
             reconnect_limit: Some(1000),
@@ -73,6 +74,7 @@ pub(crate) fn use_game_connection(game_id: &GameId, user: &User) -> Connection {
     }
 }
 
+#[hook]
 pub(crate) fn use_crate_game_req(user: &User) -> UseAsyncHandle<GameId, Error> {
     let user = user.clone();
     use_async(async move { create_game_req(&user).await })

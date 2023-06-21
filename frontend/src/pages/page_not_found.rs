@@ -5,8 +5,8 @@ use crate::{components::button::Button, Route};
 
 #[function_component(PageNotFound)]
 pub fn page_not_found() -> Html {
-    let history = use_history().unwrap();
-    let on_go_back = Callback::once(move |_| history.push(Route::Home));
+    let navigator = use_navigator().unwrap();
+    let on_go_back = move |_| navigator.push(&Route::Home);
 
     html! {
         <section class="rounded-md h-full flex items-center justify-center">
