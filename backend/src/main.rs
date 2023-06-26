@@ -25,11 +25,11 @@ use axum::{
     Json, Router,
 };
 use axum_auth::AuthBearer;
-use axum_extra::routing::SpaRouter;
 use common::{AppEvent, Game, GameAction, GameId, User, UserId};
 use futures::{sink::SinkExt, stream::StreamExt};
 use std::{collections::HashMap, net::SocketAddr, sync::Arc};
 use tokio::sync::{broadcast, Mutex, RwLock};
+use tower_http::services::ServeDir;
 use tower_http::trace::{DefaultMakeSpan, TraceLayer};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -57,9 +57,8 @@ async fn main() {
     let secret = Arc::new(AppSecret(secret));
     let tracing_layer = TraceLayer::new_for_http()
         .make_span_with(DefaultMakeSpan::default().include_headers(false));
-    let spa = SpaRouter::new("/assets", "dist");
     let app = Router::new()
-        .merge(spa)
+        .nest_service("/assets", ServeDir::new("dist"))
         .route("/api/internal_state", delete(delete_internal_state))
         .route("/api/game", post(create_game))
         .route("/api/game/:game_id", get(ws_handler))
@@ -97,8 +96,8 @@ async fn delete_internal_state(
 }
 
 async fn create_game(
-    Json(user): Json<User>,
     Extension(state): Extension<Arc<AppState>>,
+    Json(user): Json<User>,
 ) -> impl IntoResponse {
     let game = Game::new(user);
     let (tx, _rx) = broadcast::channel(100);
